@@ -5,8 +5,8 @@ import os, shutil, sqlite3
 from datetime import datetime
 
 def createBackupOfDB(appSettings):
-    dbPath = appSettings["db-path"]
-    backup_folder = appSettings["backup-path"]
+    dbPath = appSettings["path"] + appSettings["db"]
+    backup_folder = appSettings["path"] + appSettings["backup"]
 
     os.makedirs(backup_folder, exist_ok=True)
 
@@ -17,7 +17,7 @@ def createBackupOfDB(appSettings):
     log("Backup erstellt: ", backup_path)
 
 def addToDB(values, clip, claudeData, appSettings, epoch):
-    dbPath = appSettings["db-path"]
+    dbPath = appSettings["path"] + appSettings["db"]
 
     try:
         correctedValues = [v for v in values if v is not None]
@@ -80,7 +80,7 @@ def addToDB(values, clip, claudeData, appSettings, epoch):
 
 
 def readTagsFromDB(appSettings):
-    dbPath = appSettings["db-path"]
+    dbPath = appSettings["path"] + appSettings["db"]
 
     conn = sqlite3.connect(dbPath)
     database = conn.cursor()
@@ -97,7 +97,7 @@ def readTagsFromDB(appSettings):
 
 def fillDropdownsFromDB(clipId, tagList, appSettings):
     """Lädt bestehende Tags eines Clips aus der DB"""
-    conn = sqlite3.connect(appSettings["db-path"])
+    conn = sqlite3.connect(appSettings["path"] + appSettings["db"])
     cursor = conn.cursor()
     cursor.execute("""
         SELECT t.tag_name, t.category 
@@ -119,7 +119,7 @@ def fillDropdownsFromDB(clipId, tagList, appSettings):
 
 def loadDescriptionFromDB(clipId, appSettings):
     """Lädt die gespeicherte Beschreibung eines Clips aus der DB"""
-    conn = sqlite3.connect(appSettings["db-path"])
+    conn = sqlite3.connect(appSettings["path"] + appSettings["db"])
     cursor = conn.cursor()
     cursor.execute("SELECT description FROM Clips WHERE clip_id = ?", (clipId,))
     row = cursor.fetchone()
@@ -127,7 +127,7 @@ def loadDescriptionFromDB(clipId, appSettings):
     return row[0] if row and row[0] else ""
 
 def loadEpochFromDB(clipId, appSettings):
-    conn = sqlite3.connect(appSettings["db-path"])
+    conn = sqlite3.connect(appSettings["path"] + appSettings["db"])
     cursor = conn.cursor()
     cursor.execute("SELECT epoch FROM Clips WHERE clip_id = ?", (clipId,))
     row = cursor.fetchone()
@@ -143,7 +143,7 @@ def updateClipInDB(clipId, values, dropdownIds, appSettings, epoch, description)
         print("FEHLER: updateClipInDB – fehlende appsettings")
         return False
 
-    conn = sqlite3.connect(appSettings["db-path"])
+    conn = sqlite3.connect(appSettings["path"] + appSettings["db"])
     cursor = conn.cursor()
 
     try:

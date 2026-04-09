@@ -627,7 +627,7 @@ def pickClips(n_clicks, sentences, epoch, appSettings):
         return no_update
 
     print("Picking Clips")
-    output=find_best_clip_ids_for_sentences(sentences, appSettings["db-path"], 20, epoch)
+    output=find_best_clip_ids_for_sentences(sentences, appSettings["path"] + appSettings["db"], 20, epoch)
     print(output)
     return output
 
@@ -672,7 +672,7 @@ def switchRightTab(nSuggestions, nSearch):
     return no_update
 
 def getAllTagsFromDB(appSettings):
-    dbPath = appSettings["db-path"]
+    dbPath = appSettings["path"] + appSettings["db"]
 
     conn = sqlite3.connect(dbPath)
     database = conn.cursor()
@@ -696,7 +696,7 @@ def saveSearchedClips(btn, selectedTags, searchMode, appSettings, epoch):
     if not selectedTags or not btn:
         return no_update
 
-    dbPath = appSettings["db-path"]
+    dbPath = appSettings["path"] + appSettings["db"]
     placeholders = ",".join("?" * len(selectedTags))
 
     epochFilter = "AND (c.epoch = ? OR c.epoch IS NULL)" if epoch and epoch != "none" else ""
@@ -799,7 +799,7 @@ def renderSearchedClips(searchResults, currentPage, appSettings, selectedClips, 
     if not searchResults:
         return [], "Seite 0 / 0", True, True, disabledPagingBtnStyle, disabledPagingBtnStyle
 
-    appModule.rawMediaFolder = appSettings["fs-path"]
+    appModule.rawMediaFolder = appSettings["path"] + appSettings["fs"]
 
     currentPage = currentPage or 0
     pageSize = 20
@@ -826,7 +826,7 @@ def renderSearchedClips(searchResults, currentPage, appSettings, selectedClips, 
 
 
         for ext in EXTENSIONS:
-            testPath = os.path.join(appSettings["fs-path"], f"{clipId}{ext}")
+            testPath = os.path.join(appSettings["path"] + appSettings["fs"], f"{clipId}{ext}")
             if os.path.exists(testPath):
                 filePath = f"/media/{clipId}{ext}"
                 extension = ext
@@ -942,10 +942,10 @@ def renderRecommendedClips(selectedSentence, clips, selectedClips, appSettings, 
     if not clips:
         return []
 
-    if not appSettings or not appSettings.get("fs-path"):
+    if not appSettings or not appSettings["path"] + appSettings["fs"]:
         return []
 
-    appModule.rawMediaFolder = appSettings["fs-path"]
+    appModule.rawMediaFolder = appSettings["path"] + appSettings["fs"]
 
     selectedClips = selectedClips or []
 
@@ -969,7 +969,7 @@ def renderRecommendedClips(selectedSentence, clips, selectedClips, appSettings, 
         extension = None
 
         for ext in EXTENSIONS:
-            test_path = os.path.join(appSettings["fs-path"], f"{clip}{ext}")
+            test_path = os.path.join(appSettings["path"] + appSettings["fs"], f"{clip}{ext}")
 
             if os.path.exists(test_path):
                 file_path = f"/media/{clip}{ext}"
@@ -1206,7 +1206,7 @@ def displaySelectedClips(selectedClips, selectedSentence, placeholderStore, clip
         extension = None
 
         for ext in EXTENSIONS:
-            test_path = os.path.join(appSettings["fs-path"], f"{clip}{ext}")
+            test_path = os.path.join(appSettings["path"] + appSettings["fs"], f"{clip}{ext}")
             if os.path.exists(test_path):
                 file_path = f"/media/{clip}{ext}"
                 extension = ext
@@ -1410,7 +1410,7 @@ def createFolder(n_clicks, sentences, selectedClips, filename, appSettings, plac
             extension = None
 
             for ext in EXTENSIONS:
-                test_path = os.path.join(appSettings["fs-path"], f"{clip}{ext}")
+                test_path = os.path.join(appSettings["path"] + appSettings["fs"], f"{clip}{ext}")
                 if os.path.exists(test_path):
                     source = test_path
                     extension = ext
@@ -1483,7 +1483,7 @@ def openEditModal(n_clicks, appSettings):
 
     clip = None
     for ext in EXTENSIONS:
-        path = os.path.join(appSettings["fs-path"], f"{clipId}{ext}")
+        path = os.path.join(appSettings["path"] + appSettings["fs"], f"{clipId}{ext}")
         if os.path.exists(path):
             clip = {"name": str(clipId), "extension": ext,
                     "type": "video" if ext in VIDEO_EXT else "image"}

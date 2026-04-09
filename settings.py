@@ -5,10 +5,7 @@ from copy import deepcopy
 SETTINGS_PATH = "settings.json"
 
 DEFAULT_SETTINGS = {
-    "db-path": r"C:\Users\Admin\Documents\05-No_Mans_Sky\Database\Wissen_aus_alten_Tagen_db.db",
-    "fs-path": r"C:\Users\Admin\Documents\05-No_Mans_Sky\Database\Wissen-aus-alten_Tagen_Media",
-    "raw-path": r"C:\Users\Admin\Documents\05-No_Mans_Sky\Database\rohmaterial",
-    "backup-path": r"C:\Users\Admin\Documents\05-No_Mans_Sky\Database\backups",
+    "path": r"C:\\Users\\Admin\\Documents\\05-No_Mans_Sky\\Database\\",
 }
 
 def load_settings():

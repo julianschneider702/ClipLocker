@@ -162,41 +162,19 @@ def serveLayout():
                     "boxSizing": "border-box",
                 },
                 children=[
-                    html.H2("Paths", style={"color": "#d4d4d4"}),
-                    html.Label("Datenbank:", style={"color": "#d4d4d4"}),
+                    #html.H2("Paths", style={"color": "#d4d4d4"}),
+                    html.Label("Path:", style={"color": "#d4d4d4"}),
                     dcc.Input(
-                        id={"type": "settings-input", "key": "db-path"},
+                        id={"type": "path-input", "key": "path"},
                         type="text",
                         style=baseStyleInputPath,
-                        value=current_settings.get("db-path", ""),
-                    ),
-                    html.Label("Fotosammlung:", style={"color": "#d4d4d4"}),
-                    dcc.Input(
-                        id={"type": "settings-input", "key": "fs-path"},
-                        type="text",
-                        style=baseStyleInputPath,
-                        value=current_settings.get("fs-path", ""),
-                    ),
-                    html.Label("Rohmaterial:", style={"color": "#d4d4d4"}),
-                    dcc.Input(
-                        id={"type": "settings-input", "key": "raw-path"},
-                        type="text",
-                        style=baseStyleInputPath,
-                        value=current_settings.get("raw-path", ""),
-                    ),
-                    html.Label("Backups:", style={"color": "#d4d4d4"}),
-                    dcc.Input(
-                        id={"type": "settings-input", "key": "backup-path"},
-                        type="text",
-                        style=baseStyleInputPath,
-                        value=current_settings.get("backup-path", ""),
+                        value=current_settings.get("path", ""),
                     ),
                     html.Button(
                         "Einstellungen speichern",
                         id="save-settings-btn",
                         style={**titleBtnStyle, "marginTop": "30px"},
                     ),
-
                 ]
             )
         ]

@@ -121,7 +121,7 @@ def renderTopPathInput(appSettings):
                 id="path-input",
                 type="text",
                 placeholder="Ordnerpfad eingeben...",
-                value= appSettings["raw-path"],
+                value= appSettings["path"] + appSettings["raw"],
                 style= baseStyleInputPath
             ),
 
@@ -605,8 +605,8 @@ def createClaudePrompts(clips, settings, appSettings):
     if settings is None or clips is None:
         return no_update
 
-    print("db-path_ ", appSettings["db-path"])
-    conn = sqlite3.connect(appSettings["db-path"])
+    print("db-path_ ", appSettings["path"] + appSettings["db"])
+    conn = sqlite3.connect(appSettings["path"] + appSettings["db"])
     database = conn.cursor()
     database.execute("SELECT tag_name FROM Tags")
     rows = database.fetchall()
@@ -1060,7 +1060,6 @@ def renderRightDropDowns(appSettings, claudeData=None, firstClip=None, editMode=
     Output("currentClip-store", "data", allow_duplicate=True),
     Output({"type": "dropdown", "name": ALL}, "value"),
     Output("tag-sentence", "value"),
-    Output("tag-edit-overlay", "style", allow_duplicate=True),
     Input("db-button", "n_clicks"),
     Input("skip-button", "n_clicks"),
     State("clips-store", "data"),
@@ -1071,41 +1070,38 @@ def renderRightDropDowns(appSettings, claudeData=None, firstClip=None, editMode=
     State("epoch-store", "data"),
     State("app-settings-store", "data"),
     State("page-store", "data"),
-    State("tag-edit-modal-content", "children"),
     State("edit-clip-id-store", "data"),
     State("tag-sentence", "value"),
     prevent_initial_call=True,
 )
 def buttonPressed(dbButton, skipButton, clips, lastClipIndex, values, dropdownIds,
-                  claudeData, epoch, appSettings, page, modalContent, editClipId, tagSentence):
+                  claudeData, epoch, appSettings, page, editClipId, tagSentence):
 
     trigger = ctx.triggered_id
 
     if trigger == "db-button" and not dbButton:
-        return no_update, no_update, [no_update for _ in values], no_update, no_update
+        return no_update, no_update, [no_update for _ in values], no_update
     if trigger == "skip-button" and not skipButton:
-        return no_update, no_update, [no_update for _ in values], no_update, no_update
+        return no_update, no_update, [no_update for _ in values], no_update
 
-    editMode = page == "page3" and modalContent is not None
+    editMode = page == "page3"
 
-    # ── Edit-Modus: nur in DB updaten und Modal schließen ──────────────────
     if editMode:
         if trigger == "db-button":
 
             updateClipInDB(editClipId, values, dropdownIds, appSettings, epoch, tagSentence)
 
-        return no_update, no_update, [no_update for _ in values], no_update, {"display": "none"}
+        return no_update, no_update, [no_update for _ in values], no_update
 
     # ── Page2-Modus ────────────────────────────────────────────────────────
     if lastClipIndex == "Nothing to show" or not clips:
-        return no_update, no_update, [no_update for _ in values], no_update, no_update
+        return no_update, no_update, [no_update for _ in values], no_update
 
     if not any(x is not None for x in values) and trigger == "db-button":
         clip = clips[lastClipIndex]
         if not (claudeData and clip["name"] in claudeData):
             log("ABBRUCH: keine tags ausgewählt", color="red")
-            return no_update, no_update, [no_update for _ in values], no_update, no_update
-
+            return no_update, no_update, [no_update for _ in values], no_update
     if lastClipIndex is None:
         lastClipIndex = -1
 
@@ -1117,7 +1113,7 @@ def buttonPressed(dbButton, skipButton, clips, lastClipIndex, values, dropdownId
         if clipID is not None:
             moveToMediaFolder(clip, clipID, appSettings)
         else:
-            return no_update, no_update, [no_update for _ in values], no_update, no_update
+            return no_update, no_update, [no_update for _ in values], no_update
 
     if nextClipIndex < len(clips):
         clip = clips[nextClipIndex]
@@ -1130,7 +1126,7 @@ def buttonPressed(dbButton, skipButton, clips, lastClipIndex, values, dropdownId
             description = ""
             newValues = clearDropDowns(values)
 
-        return showClip(clip), nextClipIndex, newValues, description, no_update
+        return showClip(clip), nextClipIndex, newValues, description
 
     else:
         return html.Div(
@@ -1142,7 +1138,7 @@ def buttonPressed(dbButton, skipButton, clips, lastClipIndex, values, dropdownId
                 "border": "3px solid black", "backgroundColor": "#F08080",
                 "boxSizing": "border-box",
             }
-        ), "Nothing to show", clearDropDowns(values), "", no_update
+        ), "Nothing to show", clearDropDowns(values), ""
 
 
 def showClip(clip):
@@ -1168,7 +1164,7 @@ def showClip(clip):
 def fillDropdowns(dropdownIds, tags, appSettings):
     """Liest aus DB welcher Tag zu welcher Kategorie gehört und füllt Dropdowns"""
 
-    conn = sqlite3.connect(appSettings["db-path"])
+    conn = sqlite3.connect(appSettings["path"] + appSettings["db"])
     cursor = conn.cursor()
     placeholders = ",".join("?" * len(tags))
     cursor.execute(f"SELECT tag_name, category FROM Tags WHERE tag_name IN ({placeholders})", tags)
@@ -1205,12 +1201,12 @@ def moveToMediaFolder(clip, clipID, appSettings):
         log("FEHLER: Kein Rohmaterialordner gefunden.", color="red")
         return False
 
-    os.makedirs(appSettings["fs-path"], exist_ok=True)
+    os.makedirs(appSettings["path"] + appSettings["fs"], exist_ok=True)
 
     filename = f"{clip['name']}{clip['extension']}"
 
     src = os.path.join(appModule.rawMediaFolder, filename)
-    dst = os.path.join(appSettings["fs-path"], f"{clipID}{clip['extension']}")
+    dst = os.path.join(appSettings["path"] + appSettings["fs"], f"{clipID}{clip['extension']}")
 
     if os.path.exists(dst):
         log("FEHLER: Datei existiert im Ziel bereits:", dst, color = "red")
