@@ -167,8 +167,36 @@ def serveLayout():
                     dcc.Input(
                         id={"type": "path-input", "key": "path"},
                         type="text",
-                        style=baseStyleInputPath,
+                        style={**baseStyleInputPath, "marginBottom": "10px"},
                         value=current_settings.get("path", ""),
+                    ),
+                    html.Label("Datenbank:", style={"color": "#d4d4d4"}),
+                    dcc.Input(
+                        id={"type": "db-input", "key": "db"},
+                        type="text",
+                        style={**baseStyleInputPath, "marginBottom": "10px"},
+                        value=current_settings.get("db", ""),
+                    ),
+                    html.Label("Fotosammlung:", style={"color": "#d4d4d4"}),
+                    dcc.Input(
+                        id={"type": "fs-input", "key": "fs"},
+                        type="text",
+                        style={**baseStyleInputPath, "marginBottom": "10px"},
+                        value=current_settings.get("fs", ""),
+                    ),
+                    html.Label("Raw-Folder:", style={"color": "#d4d4d4"}),
+                    dcc.Input(
+                        id={"type": "raw-input", "key": "raw"},
+                        type="text",
+                        style={**baseStyleInputPath, "marginBottom": "10px"},
+                        value=current_settings.get("raw", ""),
+                    ),
+                    html.Label("Db-Backups:", style={"color": "#d4d4d4"}),
+                    dcc.Input(
+                        id={"type": "backup-input", "key": "backup"},
+                        type="text",
+                        style={**baseStyleInputPath, "marginBottom": "10px"},
+                        value=current_settings.get("backup", ""),
                     ),
                     html.Button(
                         "Einstellungen speichern",

@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build output
+build/
+dist/
+
+# Database / cache
+cache/
+
+# IDE (PyCharm)
+.idea/
+
+# OS
+.DS_Store
