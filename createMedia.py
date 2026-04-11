@@ -3,6 +3,9 @@ import html, io
 import os
 import shutil
 import sqlite3
+import time
+
+import cv2
 
 from dash import html, dcc, Output, Input, State, no_update, ctx, ALL, MATCH
 from docx import Document
@@ -860,6 +863,8 @@ def renderSearchedClips(searchResults, currentPage, appSettings, selectedClips, 
                 id={"type": "video", "form": "searched","clip_id": clipId},
                 src=filePath,
                 controls=True,
+                preload="metadata",
+                #poster=create_video_thumbnail(filePath),
                 style=clipStyle
             )
         elif extension in IMAGE_EXT:
@@ -981,6 +986,7 @@ def renderRecommendedClips(selectedSentence, clips, selectedClips, appSettings, 
                 id={"type": "video","form": "recommended", "clip_id": clip},
                 src=file_path,
                 controls=True,
+                preload="metadata",
                 style=newVideoStyle
             )
 
@@ -1218,9 +1224,12 @@ def displaySelectedClips(selectedClips, selectedSentence, placeholderStore, clip
                 style=miniClipErrorStyle
             )
         elif extension in VIDEO_EXT:
+
+
             media = html.Video(
                 src=file_path,
                 controls=False,
+                preload="metadata",
                 style=miniClipStyle
             )
         elif extension in IMAGE_EXT:
@@ -1261,6 +1270,33 @@ def displaySelectedClips(selectedClips, selectedSentence, placeholderStore, clip
         )
 
     return selectedClipCards
+
+
+def create_video_thumbnail(video_path, time_ms=100):
+    print(video_path)
+    cap = cv2.VideoCapture(video_path)
+
+    if not cap.isOpened():
+        raise RuntimeError("Video konnte nicht geöffnet werden")
+
+    # zu gewünschter Stelle springen (z. B. 0.3 Sekunden)
+    cap.set(cv2.CAP_PROP_POS_MSEC, time_ms)
+
+    success, frame = cap.read()
+    cap.release()
+
+    if not success:
+        raise RuntimeError("Konnte keinen Frame lesen")
+
+    # Frame → JPEG im Speicher encodieren
+    success, buffer = cv2.imencode(".jpg", frame)
+    if not success:
+        raise RuntimeError("Encoding fehlgeschlagen")
+
+    # Base64 erzeugen
+    jpg_as_text = base64.b64encode(buffer).decode("utf-8")
+
+    return f"data:image/jpeg;base64,{jpg_as_text}"
 
 
 @app.callback(
@@ -1436,16 +1472,20 @@ def safe_filename_part(text):
 
 @app.callback(
     Output("edit-tags-store", "data"),
-    Input({"type": "edit_tags_button", "form": ALL, "clip_id": ALL}, "n_clicks"),
+    Input({"type": "edit_tags_button", "form": ALL, "clip_id": ALL}, "n_clicks_timestamp"),
     prevent_initial_call=True
 )
-def openTagEditor(n_clicks):
+def openTagEditor(timestamps):
     triggered = ctx.triggered_id
     if not triggered:
         return no_update
 
-    triggered_value = ctx.triggered[0]["value"]
-    if triggered_value in (None, 0):
+    timestamp = ctx.triggered[0]["value"]
+    if not timestamp:
+        return no_update
+
+    # Ignorieren wenn Klick älter als 1 Sekunde
+    if (time.time() * 1000 - timestamp) > 1000:
         return no_update
 
     return {

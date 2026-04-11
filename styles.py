@@ -28,7 +28,7 @@ cardBtnStyle = {
 analyseBtnStyle = {**cardBtnStyle,
                    "fontSize": "17px",
                    "alignSelf": "flex-start",
-                   "cursor": "not-allowed"
+                   "cursor": "pointer"
                    }
 basePagingBtnStyle = {
         "padding": "8px 14px",

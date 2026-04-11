@@ -149,7 +149,7 @@ def renderPage2_1Content(clips):
             html.Button(
                 "▶ Alle Analysieren",
                 id="analyse-btn",
-                disabled=True,
+                #disabled=True,
                 style=analyseBtnStyle
             ),
             # Analyse Progress
@@ -209,31 +209,32 @@ def checkPathAndShowAndHideButton(clicks, path):
         log("Ungültiger Pfad.", color="red")
         return newStylePath, no_update
 
+
 @app.callback(
     Output("clips-store", "data"),
     Output("currentClip-store", "data"),
+    Output("clip-settings-store", "data", allow_duplicate=True),  # ← neu
     Input("path-button", "n_clicks"),
     State("pathInput-store", "data"),
     prevent_initial_call=True
 )
 def saveClips(clicks, path):
     if path is None:
-        return no_update, no_update
+        return no_update, no_update, no_update
 
     if os.path.isdir(path) and os.listdir(path):
         appModule.rawMediaFolder = path
     else:
         appModule.rawMediaFolder = None
-        return no_update,  None
+        return no_update, None, no_update
 
     media = []
+    settings = {}  # ← neu
     clipsLoadedCount = 0
     clipsNotLoadedCount = 0
 
     for i, filename in enumerate(os.listdir(path)):
-
         full_path = os.path.join(path, filename)
-
         if not os.path.isfile(full_path):
             continue
 
@@ -241,26 +242,24 @@ def saveClips(clicks, path):
         ext = ext.lower()
 
         if ext in allowed_images:
-            media.append({"name": name,
-                          "extension": ext,
-                          "type": "image"})
+            media.append({"name": name, "extension": ext, "type": "image"})
+            settings[name] = {"model": "haiku", "hidden": False, "timestamps": []}  # ← neu
             clipsLoadedCount += 1
 
         elif ext in allowed_videos:
-            media.append({"name": name,
-                          "extension": ext,
-                          "type": "video"})
+            media.append({"name": name, "extension": ext, "type": "video"})
+            settings[name] = {"model": "haiku", "hidden": False, "timestamps": [0]}  # ← neu
             clipsLoadedCount += 1
 
         else:
-            log("Unaerlaubtes Format entdeckt: ", name, ext, color="red")
+            log("Unerlaubtes Format entdeckt: ", name, ext, color="red")
             clipsNotLoadedCount += 1
 
     log("Clips erfolgreich geladen: ", clipsLoadedCount)
     if clipsNotLoadedCount > 0:
         log("Clips nicht geladen: ", clipsNotLoadedCount)
 
-    return media, -1 if media else None
+    return media, -1 if media else None, settings  # ← settings hinzugefügt
 
 def renderClipCard(clip):
     return html.Div(
@@ -333,7 +332,7 @@ def renderClipCard(clip):
                                 children=[
                                     html.Button("Haiku",
                                                 id={"type": "haiku-btn", "name": clip["name"]},
-                                                style= cardBtnStyle),
+                                                style={**cardBtnStyle, "border": "1px solid " + blue}),
                                     html.Button("Sonnet",
                                                 id={"type": "sonnet-btn", "name": clip["name"]},
                                                 style= cardBtnStyle),
@@ -356,6 +355,7 @@ def createTimestampField(clip):
             style = timestampStyle,
             type="text",
             placeholder="Timestamps",
+            value="0"
         )
     # image timestamp ist unsichtbar
     return html.Div(
@@ -368,37 +368,55 @@ def createTimestampField(clip):
     Output("clip-settings-store", "data", allow_duplicate=True),
     Input({"type": "timestamp-field", "name": ALL}, "value"),
     State("clip-settings-store", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call="initial_duplicate",
 )
 def saveTimestamps(values, store):
     trigger = ctx.triggered_id
+    store = store or {}
 
+    # Initialer Call – alle Felder mit "0" vorbelegen
     if not trigger or not isinstance(trigger, dict):
+        for triggered_item in ctx.triggered:
+            prop_id = triggered_item["prop_id"]
+            value = triggered_item["value"]
+            if not value:
+                continue
+            # clip name aus prop_id extrahieren
+            import json
+            key = json.loads(prop_id.split(".")[0])
+            clipName = key["name"]
+            settings = store.get(clipName, {"model": None, "hidden": False, "timestamps": []})
+            if value == "0":
+                settings["timestamps"] = [0]
+            elif checkSyntaxTimestampField(value):
+                settings["timestamps"] = [int(x.strip()) for x in value.split(",")]
+            store[clipName] = settings
         return store
 
+    # Normaler Call
     clipName = trigger["name"]
     text = ctx.triggered[0]["value"]
     settings = store.get(clipName, {"model": None, "hidden": False, "timestamps": []})
 
     if not text:
         settings["timestamps"] = []
-        store[clipName] = settings
-        return store
-
-    if text and checkSyntaxTimestampField(text):
+    elif checkSyntaxTimestampField(text):
         settings["timestamps"] = [int(x.strip()) for x in text.split(",")]
-        store[clipName] = settings
 
+    store[clipName] = settings
     return store
 
 
 @app.callback(
     Output({"type": "timestamp-field", "name": MATCH},"style", allow_duplicate=True),
     Input({"type": "timestamp-field", "name": MATCH},"value"),
-    prevent_initial_call=True,
+    prevent_initial_call="initial_duplicate"
 )
+
 def colorTimestampField(text):
-    if text is None or not text:
+    if text is None:
+        return {"display": "none"}
+    if not text:
         return {**timestampStyle, "border": "1px solid" + grey}
 
     if checkSyntaxTimestampField(text):
@@ -420,11 +438,25 @@ def checkSyntaxTimestampField(text):
     Input({"type": "sonnet-btn", "name": MATCH}, "n_clicks"),
     Input({"type": "hide-btn", "name": MATCH}, "n_clicks"),
     State("clip-settings-store", "data"),
-    prevent_initial_call=True,
+    prevent_initial_call=False,
 )
 def updateClipDisplay(haiku, sonnet, hide, store):
     trigger = ctx.triggered_id
-    clipName = trigger["name"]
+    clipName = trigger["name"] if trigger and isinstance(trigger, dict) else None
+
+    if not trigger or not isinstance(trigger, dict):
+        # Initialer Call – Style aus Store lesen
+        if store and clipName:
+            settings = store.get(clipName, {})
+        else:
+            return (
+                {**cardBtnStyle, "border": "1px solid " + blue},  # haiku default
+                cardBtnStyle,
+                cardBtnStyle,
+                no_update,
+                cardStyleNormal
+            )
+
     settings = store.get(clipName, {"model": None, "hidden": False})
 
     if trigger["type"] == "haiku-btn":
@@ -466,45 +498,45 @@ def saveClipSettings(haiku, sonnet, hide, store):
     return store
 
 
-@app.callback(
-    Output("analyse-btn","style", allow_duplicate=True),
-    Output("analyse-btn","disabled", allow_duplicate=True),
-    Input("clip-settings-store", "data"),
-    State("clips-store", "data"),
-    State("analyse-btn", "style"),
-    prevent_initial_call=True,
-)
-def activateAnalyseBtn(settings, clips, currentStyle):
-    if not clips:
-        return no_update, no_update
-
-    #wenn unsichtbar dann ignorieren
-    if currentStyle and currentStyle.get("display") == "none":
-        return no_update, no_update
-
-    if settings is None or clips is None:
-        return no_update, no_update
-
-    for clip in clips:
-        setting = settings.get(clip["name"], {})
-        hidden = setting.get("hidden", False)
-
-        if hidden:
-            continue
-
-        model = setting.get("model", None)
-        timestamps = setting.get("timestamps", [])
-        type = clip["type"]
-
-        if type == "video":
-            if model is None or len(timestamps) == 0:
-                return analyseBtnStyle, True
-        if type == "image":
-            if model is None:
-                return analyseBtnStyle, True
-
-    log("Analyse-Button aktiviert")
-    return {**analyseBtnStyle, "cursor": "pointer", "backgroundColor": "white", "color": "black"}, False
+# @app.callback(
+#     Output("analyse-btn","style", allow_duplicate=True),
+#     Output("analyse-btn","disabled", allow_duplicate=True),
+#     Input("clip-settings-store", "data"),
+#     State("clips-store", "data"),
+#     State("analyse-btn", "style"),
+#     prevent_initial_call=True,
+# )
+# def activateAnalyseBtn(settings, clips, currentStyle):
+#     if not clips:
+#         return no_update, no_update
+#
+#     #wenn unsichtbar dann ignorieren
+#     if currentStyle and currentStyle.get("display") == "none":
+#         return no_update, no_update
+#
+#     if settings is None or clips is None:
+#         return no_update, no_update
+#
+#     for clip in clips:
+#         setting = settings.get(clip["name"], {})
+#         hidden = setting.get("hidden", False)
+#
+#         if hidden:
+#             continue
+#
+#         model = setting.get("model", None)
+#         timestamps = setting.get("timestamps", [])
+#         type = clip["type"]
+#
+#         if type == "video":
+#             if model is None or len(timestamps) == 0:
+#                 return analyseBtnStyle, True
+#         if type == "image":
+#             if model is None:
+#                 return analyseBtnStyle, True
+#
+#     log("Analyse-Button aktiviert")
+#     return {**analyseBtnStyle, "cursor": "pointer", "backgroundColor": "white", "color": "black"}, False
 
 
 @app.callback(
@@ -668,6 +700,7 @@ def createClaudePrompts(clips, settings, appSettings):
 
                     raw = resizeImage(raw)
                     imageData = base64.b64encode(raw).decode("utf-8")
+                    mediaType = "image/jpeg"
 
                 parsed = promptToClaude(
                     model=model, client=client, tagList=tagList, clipName=clipName,
@@ -722,7 +755,9 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
     )
 
     decisionProcess = (
-        f"Select only clearly visible tags from this list: {tagList}\n\n"
+        f"Select only tags from this list that describe the MAIN FOCUS of the image – what is clearly in the foreground or center of attention: {tagList}\n\n"
+        f"MAXIMUM 5 tags. Ignore background elements, even if visible.\n"
+        f"Only assign activity tags when a person is clearly and actively performing that action – never for objects alone.\n\n"
 
         f"Follow this decision process in order:\n\n"
 
@@ -746,7 +781,7 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"   → Describe the space, its structure, materials and notable features\n\n"
 
         f"Write exactly 3 sentences unless rule 1 applies. Rules:\n"
-        f"- Only describe what is CLEARLY visible\n"
+        f"- Only describe what is in the MAIN FOCUS – foreground and center of attention\n"
         f"- Infer role or occupation only when clearly supported by the combination "
         f"of visible tools, clothing and setting – name the inferred role directly, "
         f"do not describe the evidence that led to it\n"
@@ -754,8 +789,8 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"{'- Only describe what is consistent across multiple frames' + chr(10) if isVideo else ''}"
         f"- Name materials when identifiable: stone, timber, clay, straw, "
         f"wool, iron, leather, thatch\n"
-        f"- Name actions precisely: stacking, burning, cooking, building, "
-        f"grinding, carrying, weaving\n"
+        f"- Name actions precisely, but only when a person is clearly performing them: "
+        f"stacking, burning, cooking, building, grinding, carrying, weaving\n"
         f"- Name objects precisely: hearth, beam, rafter, wall, roof, "
         f"chimney, vessel, tool\n"
         f"- No filler words, no art style, no storytelling\n"
@@ -784,14 +819,14 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"An iron axe rests against the outer stack beside scattered wood chips "
         f"on the ground. Several layers of seasoned firewood fill the sheltered "
         f"storage area.\n"
-        f"TAGS: firewood, axe, lumberjack\n\n"
+        f"TAGS: firewood, lumberjack\n\n"
 
         f"DESCRIPTION: A narrow corridor runs between two thick stone walls with "
         f"arched openings along one side and an uneven flagstone floor. A guard "
         f"stands near the far archway holding a spear, partially lit by a wall-"
         f"mounted torch. The vaulted ceiling and thick masonry indicate a castle "
         f"interior.\n"
-        f"TAGS: corridor, castle, interior, guard, standing, spear, torch\n\n"
+        f"TAGS: corridor, guard\n\n"
 
         f"DESCRIPTION: A large barn interior with high rafters and a dirt floor "
         f"contains grain bundles hanging from the beams and a barrel stacked "
@@ -799,11 +834,11 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"harvesting grain into a sack with a scythe resting beside them. "
         f"Scattered straw covers the floor around the storage area.\n"
         f"TAGS: barn, interior, grain, barrel, peasant, crouching, "
-        f"harvesting, scythe\n\n"
+        f"harvesting, scythe, barn\n\n"
 
         f"DESCRIPTION: A stone wall and the lower half of a wooden beam are "
         f"visible in low light.\n"
-        f"TAGS: wall, interior\n"
+        f"TAGS: wall\n"
     )
 
     examplesShort = (
@@ -812,12 +847,11 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"a kettle that hangs above the flames on an iron chain. A second peasant "
         f"carries firewood toward the fire across a stone interior with a low "
         f"ceiling. A food container and jug sit on a wooden table along the wall.\n"
-        f"TAGS: indoor-fireplace, fire, cooking, carrying, peasant, kettle, "
-        f"firewood, interior\n\n"
+        f"TAGS: indoor-fireplace, fire, cooking, kettle\n\n"
 
         f"DESCRIPTION: A stone wall and the lower half of a wooden beam are "
         f"visible in low light.\n"
-        f"TAGS: wall, interior\n"
+        f"TAGS: wall\n"
     )
 
     basePrompt = intro + decisionProcess + (examplesFull if isHaiku else examplesShort)
@@ -902,11 +936,16 @@ def parseClaudeResponse(response, clipName):
 def resizeImage(imageBytes: bytes) -> bytes:
     img = PILImage.open(io.BytesIO(imageBytes))
 
+    if img.mode == "RGBA":
+        img = img.convert("RGB")
+
     w, h = img.size
     longSide = max(w, h)
 
     if longSide <= MAX_LONG_SIDE:
-        return imageBytes  # kein Resize nötig
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG")
+        return buffer.getvalue()
 
     scale = MAX_LONG_SIDE / longSide
     newW = int(w * scale)
@@ -915,8 +954,7 @@ def resizeImage(imageBytes: bytes) -> bytes:
     img = img.resize((newW, newH), PILImage.LANCZOS)
 
     buffer = io.BytesIO()
-    fmt = img.format if img.format else "JPEG"
-    img.save(buffer, format=fmt)
+    img.save(buffer, format="JPEG")
     return buffer.getvalue()
 
 

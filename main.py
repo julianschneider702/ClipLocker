@@ -48,6 +48,23 @@ app.clientside_callback(
     prevent_initial_call=True,
 )
 
+app.clientside_callback(
+    """
+    function(page) {
+        const videos = document.querySelectorAll('video');
+        videos.forEach(v => {
+            v.pause();
+            v.src = '';
+            v.load();
+        });
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("search-results-panel", "data-dummy"),
+    Input("search-page-store", "data"),
+    prevent_initial_call=True,
+)
+
 def renderPage1():
     return html.Div(
             style={
