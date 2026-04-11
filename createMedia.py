@@ -19,7 +19,7 @@ from embedding import find_best_clip_ids_for_sentences
 from tagVideo import renderLeftPreviewAndButton, renderRightDropDowns
 
 VIDEO_EXT = [".mp4", ".mov", ".webm"]
-IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp"]
+IMAGE_EXT = [".jpg", ".jpeg", ".png", ".webp", ".avif"]
 EXTENSIONS = IMAGE_EXT + VIDEO_EXT
 
 
@@ -66,7 +66,7 @@ def renderPage3(appSettings):
                                 options=[
                                     {"label": "🏰 Medieval", "value": "medieval"},
                                     {"label": "🏛️ Rome", "value": "rome"},
-                                    {"label": "⬜ Epochenlos", "value": "none"},
+                                    {"label": "🌐 Alle Epochen", "value": "none"},
                                 ],
                                 placeholder="Epoche wählen...",
                                 clearable=False,
@@ -631,7 +631,7 @@ def pickClips(n_clicks, sentences, epoch, appSettings):
 
     print("Picking Clips")
     output=find_best_clip_ids_for_sentences(sentences, appSettings["path"] + appSettings["db"], 20, epoch)
-    print(output)
+
     return output
 
 @app.callback(
@@ -1472,7 +1472,7 @@ def safe_filename_part(text):
 
 @app.callback(
     Output("edit-tags-store", "data"),
-    Input({"type": "edit_tags_button", "form": ALL, "clip_id": ALL}, "n_clicks_timestamp"),
+    Input({"type": "edit_tags_button", "form": ALL, "clip_id": ALL}, "n_clicks"),
     prevent_initial_call=True
 )
 def openTagEditor(timestamps):
@@ -1484,9 +1484,8 @@ def openTagEditor(timestamps):
     if not timestamp:
         return no_update
 
-    # Ignorieren wenn Klick älter als 1 Sekunde
-    if (time.time() * 1000 - timestamp) > 1000:
-        return no_update
+    print("clip_id", triggered["clip_id"])
+    print("form", triggered["form"])
 
     return {
         "clip_id": triggered["clip_id"],
@@ -1516,10 +1515,28 @@ def toggleTagEditorOverlay(editData):
     prevent_initial_call=True,
 )
 def openEditModal(n_clicks, appSettings):
-    if not any(n for n in n_clicks if n):
+    print("modal aufgerufen")
+
+    # Kein echter Klick
+    if not n_clicks or not any(n for n in n_clicks if n):
         return no_update, no_update, no_update
 
-    clipId = ctx.triggered_id["clip_id"]
+    # Kein Trigger
+    triggered = ctx.triggered_id
+    if not triggered or not isinstance(triggered, dict):
+        return no_update, no_update, no_update
+
+    # Triggered value prüfen
+    if not ctx.triggered[0]["value"]:
+        return no_update, no_update, no_update
+
+    # Settings fehlen
+    if not appSettings:
+        return no_update, no_update, no_update
+
+    clipId = triggered["clip_id"]
+    if clipId is None:
+        return no_update, no_update, no_update
 
     clip = None
     for ext in EXTENSIONS:
@@ -1530,21 +1547,29 @@ def openEditModal(n_clicks, appSettings):
             break
 
     if clip is None:
+        print(f"Clip {clipId} nicht gefunden")
         return no_update, no_update, no_update
 
     content = html.Div([
+        html.Button(
+            "✕",
+            id="close-edit-modal-btn",
+            n_clicks=0,
+            style=selectClipBtnStyle
+        ),
         html.Div(
             style={"display": "flex", "gap": "20px"},
             children=[
                 renderLeftPreviewAndButton(clip, editMode=True),
                 renderRightDropDowns(
                     appSettings,
-                    editMode=True,        # ← kein claudeData
-                    editClipId=clipId     # ← aus DB laden
+                    editMode=True,
+                    editClipId=clipId
                 )
             ]
-        )
+        ),
     ])
+    print("modal durch")
     print("clipId: ", clipId)
 
     return content, tagEditOverlayStyle, clipId
@@ -1554,10 +1579,11 @@ def openEditModal(n_clicks, appSettings):
     Output("tag-edit-overlay", "style", allow_duplicate=True),
     Output("page-content-wrapper", "style", allow_duplicate=True),
     Input("db-button", "n_clicks"),   #nach Speichern schließen
+    Input("close-edit-modal-btn", "n_clicks"),
     prevent_initial_call=True,
 )
-def closeEditModal(btn):
-    if btn is None or btn == 0:
+def closeEditModal(db, close):
+    if (db is None or db == 0 )and (close is None or close ==0):
         return no_update, no_update
 
     return {"display": "none"}, pageContentNormalStyle

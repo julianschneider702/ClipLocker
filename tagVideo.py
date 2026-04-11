@@ -24,7 +24,7 @@ MAX_LONG_SIDE = 1568
 claudeResults = {}
 
 allowed_images = [".jpg", ".jpeg", ".png", ".webp", ".avif"]
-allowed_videos = [".mp4", ".mov", ".webm", ".avi"]
+allowed_videos = [".mp4", ".mov", ".webm", ".avi",]
 
 
 progress = {"current": 0, "total": 0}
@@ -161,7 +161,7 @@ def renderPage2_1Content(clips):
             html.Div(
                 style={
                     "display": "grid",
-                    "gridTemplateColumns": "repeat(2, 1fr)",
+                    "gridTemplateColumns": "repeat(auto-fit, minmax(500px, 1fr))",
                     "gap": "12px",
                 },
                 children=[renderClipCard(clip) for clip in clips]
@@ -757,6 +757,8 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
     decisionProcess = (
         f"Select only tags from this list that describe the MAIN FOCUS of the image – what is clearly in the foreground or center of attention: {tagList}\n\n"
         f"MAXIMUM 5 tags. Ignore background elements, even if visible.\n"
+        f"- If the scene is clearly set outdoors during the day, or daylight is visible through a window, always include the tag 'daytime'.\n"
+        f"- Only use the tag 'interior' when a scene clearly shows a scene inside a room, where no people or actions are in the center of attention.\n"
         f"Only assign activity tags when a person is clearly and actively performing that action – never for objects alone.\n\n"
 
         f"Follow this decision process in order:\n\n"

@@ -212,6 +212,7 @@ tagEditOverlayStyle = {
     "zIndex": "9999",
 }
 tagEditModalStyle = {
+    "position": "relative",
     "width": "1000px",
     "maxWidth": "90vw",
     "minHeight": "500px",

@@ -18,6 +18,24 @@ CATEGORY_WEIGHTS = {
     "weather": 0.8,
 }
 
+hint_words_exact = {
+    "thus", "hence", "consequently", "meanwhile",
+    "afterwards", "afterward", "nevertheless", "however",
+    "therefore", "instead", "additionally",
+}
+
+hint_phrases = {
+    "this is why", "that is why", "that's why",
+    "because of this", "as a result", "for this reason",
+    "in doing so", "by doing so", "which is why",
+    "from that moment", "shortly after", "not long after",
+    "despite this", "in spite of this",
+    "at this place", "in this room", "in this place",
+    "here it", "there it", "here was", "there was",
+    "from there", "after that", "before that",
+    "at the same time", "in the meantime", "These"
+}
+
 SIGNAL_MAP = {
 
     # ------------------------------------------------------------------ #
@@ -177,8 +195,8 @@ SIGNAL_MAP = {
     "buying":           ["trading", "coins", "market"],
     "gamble":           ["gambling", "tavern", "coins"],
     "gambling":         ["tavern", "coins", "interior"],
-    "beg":              ["begging", "beggar", "road"],
-    "begging":          ["beggar", "road", "village"],
+    "beg":              ["begging", "beggar"],
+    "begging":          ["beggar"],
     "arrest":           ["arresting", "guard", "prison"],
     "arresting":        ["guard", "prison", "dungeon"],
     "train":            ["sword-training", "exercising", "knight"],
@@ -217,26 +235,27 @@ SIGNAL_MAP = {
     "smoking":          ["smokehouse", "smoke", "raw-meat"],
     "cure":             ["smokehouse", "raw-meat", "smoke"],
 
-    "walked":           ["walking", "road"],
-    "ran":              ["running", "road"],
-    "rode":             ["horse-riding", "horse", "road"],
-    "fought":           ["fighting", "battlefield", "sword"],
-    "built":            ["building", "construction-site", "hammer"],
-    "dug":              ["tilling", "field", "construction-site"],
-    "sat":              ["sitting", "interior"],
-    "stood":            ["standing", "guard"],
-    "slept":            ["sleeping", "bed", "interior"],
-    "hunted":           ["hunting", "forest", "bow", "bear"],
-    "cooked":           ["cooking", "kitchen", "fire"],
-    "prayed":           ["praying", "church", "interior"],
-    "marched":          ["marching", "army", "battlefield"],
-    "harvested":        ["harvesting", "field", "grain", "scythe"],
-    "traded":           ["trading", "merchant", "market", "coins"],
-    "sold":             ["trading", "merchant", "market"],
-    "bought":           ["trading", "coins", "market"],
-    "wore":             ["clothes", "armor", "cloak"],
-    "ate":              ["eating", "table", "food-container"],
-    "drank":            ["drinking", "tavern", "beer"],
+    "walked":           ["walking"],
+    "ran":              ["running"],
+    "rode":             ["horse-riding"],
+    "fought":           ["fighting"],
+    "built":            ["building"],
+    "dug":              ["tilling"],
+    "sat":              ["sitting"],
+    "stood":            ["standing"],
+    "slept":            ["sleeping"],
+    "hunted":           ["hunting"],
+    "cooked":           ["cooking"],
+    "prayed":           ["praying"],
+    "marched":          ["marching"],
+    "harvested":        ["harvesting"],
+    "traded":           ["trading"],
+    "sold":             ["trading"],
+    "bought":           ["trading"],
+    "wore":             ["clothes"],
+    "ate":              ["eating"],
+    "drank":            ["drinking"],
+    "begged":           ["beggar", "begging"],
 
     "hunter":           ["hunting", "forest", "bow", "bear"],
     "hunters":          ["hunter", "hunting", "forest", "crowd"],
@@ -469,7 +488,7 @@ SIGNAL_MAP = {
     "straw":            ["barn", "interior", "field"],
     "timber":           ["building", "construction-site", "lumberjack"],
     "wood":             ["firewood", "lumberjack", "building"],
-    "stone":            ["castle", "church", "construction-site", "ruin"],
+    #"stone":            ["castle", "church", "construction-site", "ruin"],
     "iron":             ["blacksmith", "smithing", "anvil", "workshop"],
     "steel":            ["blacksmith", "smithing", "sword"],
     "smoke":            ["fire", "smithing", "smokehouse"],
@@ -832,23 +851,7 @@ def combined_score(
     return embedding_weight * embedding_score + tag_weight * tag_score
 
 
-hint_words_exact = {
-    "thus", "hence", "consequently", "meanwhile",
-    "afterwards", "afterward", "nevertheless", "however",
-    "therefore", "instead", "additionally",
-}
 
-hint_phrases = {
-    "this is why", "that is why", "that's why",
-    "because of this", "as a result", "for this reason",
-    "in doing so", "by doing so", "which is why",
-    "from that moment", "shortly after", "not long after",
-    "despite this", "in spite of this",
-    "at this place", "in this room", "in this place",
-    "here it", "there it", "here was", "there was",
-    "from there", "after that", "before that",
-    "at the same time", "in the meantime",
-}
 
 
 def needs_context_hint(text: str) -> bool:
