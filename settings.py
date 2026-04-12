@@ -5,7 +5,7 @@ from copy import deepcopy
 SETTINGS_PATH = "settings.json"
 
 DEFAULT_SETTINGS = {
-    "path": r"C:\\Users\\Admin\\Documents\\05-No_Mans_Sky\\Database\\",
+    "path": r"default",
     "db": "fotosammlung_db.db",
     "fs": "fotosammlung",
     "raw": "rohmaterial",

@@ -136,8 +136,7 @@ def renderPage3(appSettings):
                                 html.Div(id="sentence-panel")
                             ],
                             style={
-                                "width": "30%",
-                                "padding": "10px",
+                                "width": "0%",
                                 "display": "Block",
                             }
                         ),
@@ -145,10 +144,10 @@ def renderPage3(appSettings):
                         html.Div(
                             id="right-panel",
                             style={
-                                "width": "70%",
+                                "width": "100%",
                                 "padding": "10px",
                                 "boxSizing": "border-box",
-                                "overflowY": "auto",
+                                "overflowY": "visible",
                                 "height": "80vh",
                                 "display": "Block",
                             },
@@ -273,17 +272,6 @@ def renderPage3(appSettings):
                                                             children=[
                                                                 html.Div(
                                                                     [
-                                                                        dcc.Dropdown(
-                                                                            id="search-tags-dropdown",
-                                                                            options=getAllTagsFromDB(appSettings),
-                                                                            multi=True,
-                                                                            placeholder="Tags auswählen...",
-                                                                            style={
-                                                                                "flex": "1",
-                                                                                "color": "black",
-                                                                            }
-                                                                        ),
-
                                                                         html.Div(
                                                                             [
                                                                                 html.Div(
@@ -292,7 +280,7 @@ def renderPage3(appSettings):
                                                                                         "justifySelf": "end",
                                                                                         "fontWeight": "bold",
                                                                                         "color": "white",
-                                                                                        "fontSize": "13px",
+                                                                                        "fontSize": "12px",
                                                                                         "lineHeight": "1",
                                                                                     }
                                                                                 ),
@@ -300,7 +288,8 @@ def renderPage3(appSettings):
                                                                                 html.Div(
                                                                                     daq.ToggleSwitch(
                                                                                         id="search-mode-toggle",
-                                                                                        value=False,  # False = OR, True = AND
+                                                                                        value=False,
+                                                                                        # False = OR, True = AND
                                                                                         size=28,
                                                                                         color="#22c55e",
                                                                                     ),
@@ -319,7 +308,7 @@ def renderPage3(appSettings):
                                                                                         "justifySelf": "start",
                                                                                         "fontWeight": "bold",
                                                                                         "color": "white",
-                                                                                        "fontSize": "13px",
+                                                                                        "fontSize": "12px",
                                                                                         "lineHeight": "1",
                                                                                     }
                                                                                 ),
@@ -331,12 +320,41 @@ def renderPage3(appSettings):
                                                                                 "justifyContent": "center",
                                                                                 "columnGap": "4px",
                                                                                 "padding": "0 10px",
-                                                                                "height": "42px",
+                                                                                "height": "35px",
                                                                                 "border": "1px solid #666",
                                                                                 "borderRadius": "999px",
                                                                                 "backgroundColor": "#2f2f2f",
                                                                                 "boxSizing": "border-box",
                                                                             }
+                                                                        ),
+                                                                        dcc.Dropdown(
+                                                                            id="search-tags-dropdown",
+                                                                            options=getAllTagsFromDB(appSettings),
+                                                                            multi=True,
+                                                                            placeholder="Tags auswählen...",
+                                                                            style={
+                                                                                "flex": "1",
+                                                                                "color": "black",
+                                                                            }
+                                                                        ),
+                                                                        dcc.Dropdown(
+                                                                            id="exclude-tags-dropdown",
+                                                                            options=getAllTagsFromDB(appSettings),
+                                                                            multi=True,
+                                                                            placeholder="Tags ausschließen...",
+                                                                            style={"flex": "1", "border": "1px solid red"}
+                                                                        ),
+                                                                        dcc.Input(
+                                                                            id="search-id-min",
+                                                                            type="number",
+                                                                            placeholder="ID min",
+                                                                            style={**timestampStyle, "width": "100px"}
+                                                                        ),
+                                                                        dcc.Input(
+                                                                            id="search-id-max",
+                                                                            type="number",
+                                                                            placeholder="ID max",
+                                                                            style={**timestampStyle, "width": "100px"}
                                                                         ),
 
                                                                         html.Button(
@@ -344,7 +362,7 @@ def renderPage3(appSettings):
                                                                             id="search-clips-btn",
                                                                             n_clicks=0,
                                                                             style={
-                                                                                "height": "42px",
+                                                                                "height": "35px",
                                                                                 "padding": "0 18px",
                                                                                 "border": "1px solid #666",
                                                                                 "borderRadius": "8px",
@@ -425,6 +443,8 @@ def renderPage3(appSettings):
                                                         "padding": "16px",
                                                         # "backgroundColor": "#1f1f1f",
                                                         "minHeight": "420px",
+                                                        "overflowY": "auto",
+                                                        "maxHeight": "65vh",
                                                     }
                                                 )
                                             ]
@@ -474,13 +494,15 @@ def activateConfirmBtn(sentences, epoch):
 @app.callback(
     Output("epoch-dropdown-wrapper", "style"),
     Output("upload-wrapper", "style"),
+    Output("left-panel", "style"),
+    Output("right-panel", "style"),
     Input("sentence-store", "data"),
     prevent_initial_call=True,
 )
-def showEpochDropdown(sentences):
+def showEpochDropdownAndRerenderSite(sentences):
     if sentences:
-        return {"display": "block"}, {"display": "none"}
-    return {"display": "none"}, no_update
+        return {"display": "block"}, {"display": "none"}, {"width": "30%"}, {"width": "70%", "padding": "10px",}
+    return {"display": "none"}, no_update, no_update, no_update
 
 
 @app.callback(
@@ -690,14 +712,19 @@ def getAllTagsFromDB(appSettings):
     Output("search-results-store", "data"),
     Input("search-clips-btn", "n_clicks"),
     State("search-tags-dropdown", "value"),
+    State("exclude-tags-dropdown", "value"),
     State("search-mode-toggle", "value"),
     State("app-settings-store", "data"),
     State("epoch-dropdown-p3", "value"),
+    State("search-id-min", "value"),
+    State("search-id-max", "value"),
     prevent_initial_call=True
 )
-def saveSearchedClips(btn, selectedTags, searchMode, appSettings, epoch):
+def saveSearchedClips(btn, selectedTags, excludedTags, searchMode, appSettings, epoch, idMin, idMax):
     if not selectedTags or not btn:
         return no_update
+
+    excludedTags = excludedTags or []
 
     dbPath = appSettings["path"] + appSettings["db"]
     placeholders = ",".join("?" * len(selectedTags))
@@ -709,34 +736,57 @@ def saveSearchedClips(btn, selectedTags, searchMode, appSettings, epoch):
 
     if searchMode:  # AND
         query = f"""
-              SELECT ct.clip_id
-              FROM ClipTag AS ct
-              JOIN Tags AS t ON t.tag_id = ct.tag_id
-              JOIN Clips AS c ON c.clip_id = ct.clip_id
-              WHERE t.tag_name IN ({placeholders})
-              {epochFilter}
-              GROUP BY ct.clip_id
-              HAVING COUNT(DISTINCT t.tag_name) = ?
-              ORDER BY ct.clip_id
-          """
+            SELECT ct.clip_id
+            FROM ClipTag AS ct
+            JOIN Tags AS t ON t.tag_id = ct.tag_id
+            JOIN Clips AS c ON c.clip_id = ct.clip_id
+            WHERE t.tag_name IN ({placeholders})
+            {epochFilter}
+            GROUP BY ct.clip_id
+            HAVING COUNT(DISTINCT t.tag_name) = ?
+            ORDER BY ct.clip_id
+        """
         params = [*selectedTags, epoch, len(selectedTags)] if epochFilter else [*selectedTags, len(selectedTags)]
     else:  # OR
         query = f"""
-              SELECT DISTINCT ct.clip_id
-              FROM ClipTag AS ct
-              JOIN Tags AS t ON t.tag_id = ct.tag_id
-              JOIN Clips AS c ON c.clip_id = ct.clip_id
-              WHERE t.tag_name IN ({placeholders})
-              {epochFilter}
-              ORDER BY ct.clip_id
-          """
+            SELECT DISTINCT ct.clip_id
+            FROM ClipTag AS ct
+            JOIN Tags AS t ON t.tag_id = ct.tag_id
+            JOIN Clips AS c ON c.clip_id = ct.clip_id
+            WHERE t.tag_name IN ({placeholders})
+            {epochFilter}
+            ORDER BY ct.clip_id
+        """
         params = [*selectedTags, epoch] if epochFilter else selectedTags
 
     database.execute(query, params)
     rows = database.fetchall()
-    conn.close()
 
     result = [row[0] for row in rows]
+
+    # ── Exclude-Filter ───────────────────────────────
+    if excludedTags and result:
+        excludePlaceholders = ",".join("?" * len(excludedTags))
+        resultPlaceholders = ",".join("?" * len(result))
+        database.execute(f"""
+            SELECT DISTINCT ct.clip_id
+            FROM ClipTag AS ct
+            JOIN Tags AS t ON t.tag_id = ct.tag_id
+            WHERE t.tag_name IN ({excludePlaceholders})
+            AND ct.clip_id IN ({resultPlaceholders})
+        """, (*excludedTags, *result))
+        excludedIds = {row[0] for row in database.fetchall()}
+        result = [c for c in result if c not in excludedIds]
+    # ─────────────────────────────────────────────────
+
+    # ── ID-Bereichsfilter ────────────────────────────
+    if idMin is not None:
+        result = [c for c in result if c >= idMin]
+    if idMax is not None:
+        result = [c for c in result if c <= idMax]
+    # ─────────────────────────────────────────────────
+
+    conn.close()
     print(result)
     return result
 
