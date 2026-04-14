@@ -78,7 +78,6 @@ def addToDB(values, clip, claudeData, appSettings, epoch):
         log("FEHLER: DB-Eintrag fehlgeschlagen:", e, color="red")
         return None
 
-
 def readTagsFromDB(appSettings):
     dbPath = appSettings["path"] + appSettings["db"]
 
@@ -90,9 +89,16 @@ def readTagsFromDB(appSettings):
 
     data = {}
     for category, tag_name in rows:
+        if category is None:
+            print(f"[readTagsFromDB] None-Kategorie gefunden für Tag: {tag_name}")
+            continue
+        if tag_name is None:
+            print(f"[readTagsFromDB] None-Tag gefunden in Kategorie: {category}")
+            continue
         if category not in data:
             data[category] = []
         data[category].append(tag_name)
+
     return data
 
 def fillDropdownsFromDB(clipId, tagList, appSettings):

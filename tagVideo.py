@@ -750,8 +750,8 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
 
     intro = (
         f"{'You must follow the decision process strictly and in order.' + chr(10) + chr(10) if isHaiku else ''}"
-        f"{'Analyze these video frames from the same clip carefully. ' if isVideo else 'Analyze this image carefully. '}"
-        f"{'Identify what is consistently visible across the frames and describe the scene as a whole.' if isVideo else ''}\n\n"
+        f"{'Analyze this video clip carefully. ' if isVideo else 'Analyze this image carefully. '}"
+        f"{'Describe the scene as a whole, do not refer to individual frames, but imagine it as one continuous clip.' if isVideo else ''}\n\n"
     )
 
     decisionProcess = (
@@ -760,7 +760,8 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"- If the scene is clearly set outdoors during the day, or daylight is visible through a window, always include the tag 'daytime'.\n"
         f"- Only use the tag 'interior' when a scene clearly shows a scene inside a room, where no people or actions are in the center of attention.\n"
         f"Only assign activity tags when a person is clearly and actively performing that action – never for objects alone.\n\n"
-
+        f"Only assign people tags when a person is clearly identifiable by role – never guess from partial views.\n"
+        f"{'- Do not describe what is absent, missing or not clearly describable' + chr(10) if not isHaiku else ''}\n\n"
         f"Follow this decision process in order:\n\n"
 
         f"1. {'Are the frames' if isVideo else 'Is the image'} too dark or low quality to identify details clearly?\n"
@@ -788,7 +789,7 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"of visible tools, clothing and setting – name the inferred role directly, "
         f"do not describe the evidence that led to it\n"
         f"- If unsure about any detail, omit it – incomplete is better than wrong\n"
-        f"{'- Only describe what is consistent across multiple frames' + chr(10) if isVideo else ''}"
+       f"{'- Describe the scene as a continuous video clip, never mention frames.' + chr(10) if isVideo else ''}"
         f"- Name materials when identifiable: stone, timber, clay, straw, "
         f"wool, iron, leather, thatch\n"
         f"- Name actions precisely, but only when a person is clearly performing them: "
@@ -796,7 +797,6 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"- Name objects precisely: hearth, beam, rafter, wall, roof, "
         f"chimney, vessel, tool\n"
         f"- No filler words, no art style, no storytelling\n"
-        f"{'- Do not include the total number of frames or refer to the frame number while describing' + chr(10) if isVideo else ''}"
         f"- Build the description around the selected tags – they must appear as "
         f"load-bearing parts of the sentence, not appended at the end\n\n"
 
@@ -1063,6 +1063,7 @@ def renderRightDropDowns(appSettings, claudeData=None, firstClip=None, editMode=
                         {"label": "⬜ Epochenlos", "value": None},
                         {"label": "🏰 Medieval", "value": "medieval"},
                         {"label": "🏛️ Rome", "value": "rome"},
+                        {"label": "🏴‍☠️️ Pirate", "value": "pirate"},
                     ],
                     value=epochValue,
                     clearable=False,

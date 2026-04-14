@@ -66,6 +66,7 @@ def renderPage3(appSettings):
                                 options=[
                                     {"label": "🏰 Medieval", "value": "medieval"},
                                     {"label": "🏛️ Rome", "value": "rome"},
+                                    {"label": "🏴‍☠️️ Pirate", "value": "pirate"},
                                     {"label": "🌐 Alle Epochen", "value": "none"},
                                 ],
                                 placeholder="Epoche wählen...",
@@ -199,7 +200,7 @@ def renderPage3(appSettings):
                                                                 "borderBottom": "none",
                                                                 "borderTopLeftRadius": "10px",
                                                                 "borderTopRightRadius": "10px",
-                                                                "backgroundColor": "#ffffff",
+                                                                "backgroundColor": "#d9d9d9",
                                                                 "color": "black",
                                                                 "fontWeight": "bold",
                                                                 "cursor": "pointer",
@@ -218,7 +219,7 @@ def renderPage3(appSettings):
                                                                 "borderBottom": "none",
                                                                 "borderTopLeftRadius": "10px",
                                                                 "borderTopRightRadius": "10px",
-                                                                "backgroundColor": "#d9d9d9",
+                                                                "backgroundColor": "#ffffff",
                                                                 "color": "black",
                                                                 "fontWeight": "bold",
                                                                 "cursor": "pointer",
@@ -261,7 +262,7 @@ def renderPage3(appSettings):
                                                                     },
                                                                 ),
                                                             ],
-                                                            style={"display": "block"}
+                                                            style={"display": "none"}
                                                         ),
 
                                                         # =====================================
@@ -434,7 +435,7 @@ def renderPage3(appSettings):
                                                                     style=paginationContainerStyle
                                                                 ),
                                                             ],
-                                                            style={"display": "none"}
+                                                            style={"display": "block"}
                                                         )
                                                     ],
                                                     style={
@@ -672,11 +673,19 @@ def updateRightTabContent(activeTab):
             activeTabStyle,
         )
 
+    elif activeTab == "suggestions":
+        return (
+            {"display": "block"},
+            {"display": "none"},
+            activeTabStyle,
+            inactiveTabStyle,
+        )
+
     return (
-        {"display": "block"},
         {"display": "none"},
-        activeTabStyle,
+        {"display": "block"},
         inactiveTabStyle,
+        activeTabStyle,
     )
 
 
@@ -689,9 +698,14 @@ def updateRightTabContent(activeTab):
 def switchRightTab(nSuggestions, nSearch):
     trigger = ctx.triggered_id
 
+    if nSearch == 0 or nSuggestions == 0:
+        return no_update
+
     if trigger == "tab-suggestions":
+        print("suggestions")
         return "suggestions"
     if trigger == "tab-search":
+        print("search")
         return "search"
 
     return no_update

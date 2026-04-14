@@ -129,7 +129,7 @@ def serveLayout():
             dcc.Store(id="selectedClips-store",data=[], storage_type="memory"),
             dcc.Store(id="selectedSentence-store", data=None, storage_type="memory"),
             dcc.Store(id="documentName-store",data=None, storage_type="memory"),
-            dcc.Store(id="active-right-tab", data="suggestions", storage_type="memory"),
+            dcc.Store(id="active-right-tab", data="search", storage_type="memory"),
             dcc.Store(id="search-results-store", data=[], storage_type="memory"),
             dcc.Store(id="search-mode-store", data="and", storage_type="memory"),
             dcc.Store(id="search-page-store", data=0, storage_type="memory"),
