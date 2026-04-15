@@ -762,6 +762,7 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
         f"Only assign activity tags when a person is clearly and actively performing that action – never for objects alone.\n\n"
         f"Only assign people tags when a person is clearly identifiable by role – never guess from partial views.\n"
         f"{'- Do not describe what is absent, missing or not clearly describable' + chr(10) if not isHaiku else ''}\n\n"
+        f"{'- Do not use phrases like probably, maybe, could be or anything similar. Always describe direct and confidently what is visible' + chr(10) if isHaiku else ''}\n\n"
         f"Follow this decision process in order:\n\n"
 
         f"1. {'Are the frames' if isVideo else 'Is the image'} too dark or low quality to identify details clearly?\n"
