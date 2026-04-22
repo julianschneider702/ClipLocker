@@ -9,7 +9,8 @@ DEFAULT_SETTINGS = {
     "db": "fotosammlung_db.db",
     "fs": "fotosammlung",
     "raw": "rohmaterial",
-    "backup": "backups"
+    "backup": "backups",
+    "temp": "temp_downloads"
 }
 
 def load_settings():

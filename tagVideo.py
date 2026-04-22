@@ -338,7 +338,17 @@ def renderClipCard(clip):
                                                 style= cardBtnStyle),
                                     html.Button("🚫", id={"type": "hide-btn", "name": clip["name"]},
                                                 style= cardBtnStyle),
-                                    createTimestampField(clip)
+                                    createTimestampField(clip),
+
+                                    html.Button(
+                                        "⏱",
+                                        id={"type": "timestamp-from-player-btn", "name": clip["name"]},
+                                        style=cardBtnStyle,
+                                        title="Aktuelle Abspielzeit übernehmen",
+                                    ) if clip["type"] == "video" else html.Div(
+                                        id={"type": "timestamp-from-player-btn", "name": clip["name"]},
+                                        style={"display": "none"}
+                                    ),
                                 ]
                             ),
                         ]
@@ -363,6 +373,46 @@ def createTimestampField(clip):
         style={"display": "none"}
     )
 
+
+app.clientside_callback(
+    """
+    function(n_clicks, current_value, btn_id) {
+        if (!n_clicks) return window.dash_clientside.no_update;
+
+        const clipName = btn_id.name;
+
+        // Clip-Karte anhand der ID finden
+        const cards = document.querySelectorAll('[id]');
+        let targetVideo = null;
+
+        for (const el of cards) {
+            try {
+                const idObj = JSON.parse(el.id);
+                if (idObj.type === 'clip-card' && idObj.name === clipName) {
+                    targetVideo = el.querySelector('video');
+                    break;
+                }
+            } catch(e) {}
+        }
+
+        if (!targetVideo) return window.dash_clientside.no_update;
+
+        const t = targetVideo.currentTime.toFixed(2);
+        const trimmed = (current_value || "").trim();
+        const isDefault = trimmed === "" || trimmed === "0";
+
+        if (isDefault) {
+            return t;
+        }
+        return trimmed + ", " + t;
+    }
+    """,
+    Output({"type": "timestamp-field", "name": MATCH}, "value"),
+    Input({"type": "timestamp-from-player-btn", "name": MATCH}, "n_clicks"),
+    State({"type": "timestamp-field", "name": MATCH}, "value"),
+    State({"type": "timestamp-from-player-btn", "name": MATCH}, "id"),
+    prevent_initial_call=True,
+)
 
 @app.callback(
     Output("clip-settings-store", "data", allow_duplicate=True),
@@ -401,7 +451,7 @@ def saveTimestamps(values, store):
     if not text:
         settings["timestamps"] = []
     elif checkSyntaxTimestampField(text):
-        settings["timestamps"] = [int(x.strip()) for x in text.split(",")]
+        settings["timestamps"] = [float(x.strip()) for x in text.split(",")]
 
     store[clipName] = settings
     return store
@@ -425,7 +475,7 @@ def colorTimestampField(text):
         return {**timestampStyle, "border": "2px solid" + lightRed}
 
 def checkSyntaxTimestampField(text):
-    return bool(re.fullmatch(r"\d+(\s*,\s*\d+)*", text.strip()))         #nur zahlen mit kommas getrennt
+    return bool(re.fullmatch(r"\d+(\.\d{1,2})?(\s*,\s*\d+(\.\d{1,2})?)*", text.strip()))
 
 #UI
 @app.callback(
@@ -708,10 +758,13 @@ def createClaudePrompts(clips, settings, appSettings):
                 )
                 log("Send Image Prompt to: ", model, " for: ", clip["name"])
 
+
             elif clipType == "video":
                 timestamps = setting.get("timestamps", [])
+                #print(f"[Claude] Clip: {clip['name']} | Timestamps: {timestamps}")  # NEU
                 videoPath = os.path.join(appModule.rawMediaFolder, clipName)
                 frames = extractFramesFromVideo(videoPath, timestamps)
+                #print(f"[Claude] Frames extrahiert: {len(frames)}")  # NEU
 
                 parsed = promptToClaude(
                     model=model, client=client, tagList=tagList, clipName=clipName,
@@ -724,23 +777,26 @@ def createClaudePrompts(clips, settings, appSettings):
         progress["current"] += 1
 
 def extractFramesFromVideo(videoPath, timestamps):
-    """timestamps = Liste von Sekunden, z.B. [10, 45, 120]"""
+    #print(f"[Frames] Pfad: {videoPath} | Timestamps: {timestamps}")
     cap = cv2.VideoCapture(videoPath)
     fps = cap.get(cv2.CAP_PROP_FPS)
+    #print(f"[Frames] FPS: {fps}")
     frames = []
 
     for sec in timestamps:
         frameIndex = int(sec * fps)
+        #print(f"[Frames] sec={sec} → frameIndex={frameIndex}")
         cap.set(cv2.CAP_PROP_POS_FRAMES, frameIndex)
         ret, frame = cap.read()
-
         if ret:
             _, buffer = cv2.imencode(".jpg", frame)
-            raw = resizeImage(buffer.tobytes())
-            imageData = base64.b64encode(raw).decode("utf-8")
+            imageData = base64.b64encode(buffer).decode("utf-8")
             frames.append(imageData)
+        else:
+            print(f"[Frames] WARNUNG: Frame {frameIndex} konnte nicht gelesen werden")
 
     cap.release()
+    #print(f"[Frames] {len(frames)} Frames erfolgreich extrahiert")
     return frames
 
 def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, imageData=None, frames=None):
@@ -939,7 +995,7 @@ def parseClaudeResponse(response, clipName):
 def resizeImage(imageBytes: bytes) -> bytes:
     img = PILImage.open(io.BytesIO(imageBytes))
 
-    if img.mode == "RGBA":
+    if img.mode in ("P", "RGBA", "LA"):
         img = img.convert("RGB")
 
     w, h = img.size
@@ -1053,8 +1109,15 @@ def renderRightDropDowns(appSettings, claudeData=None, firstClip=None, editMode=
         epochValue = "medieval" #default
 
     return html.Div(
-        style={"width": "50%", "display": "flex", "flexDirection": "column",
-               "gap": "15px", "justifyContent": "flex-start"},
+        style={
+            "width": "50%",
+            "display": "flex",
+            "flexDirection": "column",
+            "gap": "15px",
+            "justifyContent": "flex-start",
+            "overflowY": "auto",  # NEU
+            "maxHeight": "80vh",  # NEU – feste Höhe damit Scrollbar erscheint
+        },
         children=[
             html.Div([
                 html.Label("Epoche", style={"fontWeight": "bold"}),
@@ -1292,3 +1355,49 @@ def saveDescription(n_blur, value, claudeData, currentIndex, clips):
 )
 def saveEpoch(value):
     return value
+
+@app.callback(
+    Output({"type": "dropdown", "name": MATCH}, "options"),
+    Input({"type": "dropdown", "name": MATCH}, "search_value"),
+    State({"type": "dropdown", "name": MATCH}, "id"),
+    State({"type": "dropdown", "name": MATCH}, "value"),  # NEU
+    State("app-settings-store", "data"),
+    prevent_initial_call=True,
+)
+def filterDropdownOptions(search_value, dropdown_id, current_value, appSettings):
+    if not appSettings:
+        return no_update
+
+    tagList = readTagsFromDB(appSettings)
+    category = dropdown_id["name"]
+    all_opts = [{"label": t, "value": t} for t in tagList.get(category, [])]
+
+    if not search_value:
+        return all_opts
+
+    search_lower = search_value.lower()
+
+    if len(search_lower) == 1:
+        # nur erster Buchstabe
+        filtered = [
+            opt for opt in all_opts
+            if opt["label"].lower().startswith(search_lower)
+        ]
+    else:
+        # zusammenhängend enthalten
+        filtered = [
+            opt for opt in all_opts
+            if search_lower in opt["label"].lower()
+        ]
+
+    # Bereits ausgewählte Werte immer drin behalten
+    if current_value:
+        selected = current_value if isinstance(current_value, list) else [current_value]
+        selected_opts = [
+            opt for opt in all_opts
+            if opt["value"] in selected
+            and opt not in filtered
+        ]
+        filtered = selected_opts + filtered
+
+    return filtered

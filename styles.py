@@ -60,7 +60,7 @@ selectClipBtnStyle = {
 
 headerStyle = {
     "fontFamily": "'Rajdhani', sans-serif",
-    "fontSize": "120px",
+    "fontSize": "150px",
     "fontWeight": "700",
     "letterSpacing": "6px",
     "color": "#d4d4d4",
@@ -82,7 +82,8 @@ terminalStyle = {
                 "fontFamily": "monospace",
                 "fontSize": "13px",
                 "padding": "12px",
-                "height": "300px",
+                "height": "20%",
+                "width": "50%",
                 "overflowY": "auto",
                 "borderRadius": "8px",
                 "whiteSpace": "pre-wrap",

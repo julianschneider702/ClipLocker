@@ -1,7 +1,8 @@
 {
-  "path": "C:\\Users\\Admin\\Documents\\05-No_Mans_Sky\\Database\\",
+  "path": "D:\\\\05-No_Mans_Sky\\Database\\\\",
   "db": "fotosammlung_db.db",
   "fs": "fotosammlung",
   "raw": "rohmaterial",
-  "backup": "backups"
+  "backup": "backups",
+  "temp": "temp_downloads"
 }

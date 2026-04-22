@@ -1,7 +1,13 @@
+import sys
+print(sys.executable)
+
 import settings as settings_manager
 from tagVideo import *
 from createMedia import renderPage3
+from createClips import *
 from styles import *
+
+
 
 app.clientside_callback(
     """
@@ -23,7 +29,7 @@ app.clientside_callback(
     function(n) {
         var panel = document.getElementById('settings-panel');
         if (panel.style.right === '0px') {
-            panel.style.right = '-400px';
+            panel.style.right = '-600px';
         } else {
             panel.style.right = '0px';
         }
@@ -39,7 +45,7 @@ app.clientside_callback(
     """
     function(n) {
         var panel = document.getElementById('settings-panel');
-        panel.style.right = '-400px';
+        panel.style.right = '-600px';
         return window.dash_clientside.no_update;
     }
     """,
@@ -81,10 +87,17 @@ def renderPage1():
                     style=headerStyle
                 ),
                 html.Div(
-                    style={"display": "flex", "gap": "20px", "marginTop": "20px"},
+                    style={
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "alignItems": "center",
+                        "gap": "20px",
+                        "marginTop": "20px"
+                    },
                     children=[
-                        html.Button("Neue Clips taggen",   id="btn-page2", style=titleBtnStyle),
-                        html.Button("Video-Clip Ordner erstellen", id="btn-page3", style=titleBtnStyle),
+                        html.Button("Neue Clips taggen", id="btn-page2", style={**titleBtnStyle, "width": "400px", "height": "60px"}),
+                        html.Button("Video-Clip Ordner erstellen", id="btn-page3", style={**titleBtnStyle, "width": "400px", "height": "60px"}),
+                        html.Button("Clips aus Youtube-Video erstellen", id="btn-page4", style={**titleBtnStyle, "width": "400px", "height": "60px"}),
                     ]
                 )
             ]
@@ -139,8 +152,41 @@ def serveLayout():
             dcc.Store(id="edit-tags-draft-store", data=None, storage_type="memory"),
             dcc.Store(id="edit-clip-id-store", data=None, storage_type="memory"),
 
+            #clips erstellen
+            dcc.Store(id="p4-clips-store", data=[], storage_type="memory"),
+            dcc.Store(id="p4-selected-store", data=None, storage_type="memory"),
+            dcc.Store(id="p4-current-time-store", data=0, storage_type="memory"),
+            dcc.Store(id="p4-split-time-store", data=None, storage_type="memory"),
+            dcc.Store(id="p4-trim-start-time-store", data=None, storage_type="memory"),
+            dcc.Store(id="p4-trim-end-time-store", data=None, storage_type="memory"),
+            dcc.Store(id="p4-time-store", data=0, storage_type="memory"),
 
-
+            #dummy
+            html.Div(id="p4-split-time-label", style={"display": "none"}),
+            html.Div(id="p4-bar-inner", style={"display": "none"}),
+            html.Div(id="p4-pct-label", style={"display": "none"}),
+            html.Div(id="p4-status-label", style={"display": "none"}),
+            html.Div(id="p4-progress-area", style={"display": "none"}),
+            html.Div(id="p4-input-area", style={"display": "none"}),
+            html.Div(id="p4-strip", style={"display": "none"}),
+            html.Div(id="p4-large-player", style={"display": "none"}),
+            html.Div(id="p4-selected-label", style={"display": "none"}),
+            html.Div(id="p4-trim-area", style={"display": "none"}),
+            html.Div(id="p4-trim-start-label", style={"display": "none"}),
+            html.Div(id="p4-trim-end-label", style={"display": "none"}),
+            html.Div(id="p4-trim-slider", style={"display": "none"}),
+            html.Img(id="p4-frame-start", style={"display": "none"}),
+            html.Img(id="p4-frame-end", style={"display": "none"}),
+            html.Div(id="p4-save-status", style={"display": "none"}),
+            html.Div(id="p4-time-display", style={"display": "none"}),
+            html.Div(id="main-container", style={"display": "none"}),
+            html.Div(id="p4-prev-btn", style={"display": "none"}),
+            html.Div(id="p4-next-btn", style={"display": "none"}),
+            dcc.Input(id="p4-folder-input", style={"display": "none"}),
+            html.Button(id="p4-folder-btn", style={"display": "none"}),
+            html.Button(id="p4-save-btn", style={"display": "none"}),
+            dcc.Input(id="p4-output-folder-input", style={"display": "none"}),
+            html.Button(id="p4-trim-03-btn", style={"display": "none"}),
 
 
             html.Div(
@@ -168,8 +214,8 @@ def serveLayout():
                 style={
                     "position": "fixed",
                     "top": "0",
-                    "right": "-400px",
-                    "width": "400px",
+                    "right": "-600px",
+                    "width": "600px",
                     "height": "100vh",
                     "backgroundColor": "#2a2a2a",
                     "borderLeft": "1px solid #444",
@@ -215,6 +261,13 @@ def serveLayout():
                         style={**baseStyleInputPath, "marginBottom": "10px"},
                         value=current_settings.get("backup", ""),
                     ),
+                    html.Label("Temp-Folder:", style={"color": "#d4d4d4"}),
+                    dcc.Input(
+                        id={"type": "settings-input", "key": "temp"},
+                        type="text",
+                        style={**baseStyleInputPath, "marginBottom": "10px"},
+                        value=current_settings.get("temp", ""),
+                    ),
                     html.Button(
                         "Einstellungen speichern",
                         id="save-settings-btn",
@@ -254,12 +307,14 @@ def sync_settings_inputs(appSettings, ids):
     Output("page-store", "data"),
     Input("btn-page2", "n_clicks"),
     Input("btn-page3", "n_clicks"),
+    Input("btn-page4", "n_clicks"),
     prevent_initial_call=True
 )
-def switchPage(p2, p3):
+def switchPage(p2, p3, p4):
     trigger = ctx.triggered_id
     if trigger == "btn-page2": return "page2_1"
     if trigger == "btn-page3": return "page3"
+    if trigger == "btn-page4": return "page4"
 
     return "page1"
 
@@ -279,6 +334,8 @@ def renderPage(page, claudeData, clips, appSettings):
         return renderPage2_2(claudeData, clips, appSettings), {**terminalStyle, "display": "block"}, {**titleBtnStyle, "display": "none"}
     if page == "page3":
         return renderPage3(appSettings), {**terminalStyle, "display": "none"}, {**titleBtnStyle, "display": "none"}
+    if page == "page4":
+        return renderPage4(appSettings), {**terminalStyle, "display": "none"}, {**titleBtnStyle, "display": "none"}
     return renderPage1(), {"display": "none"}, {**titleBtnStyle, "display": "block"}
 
 if __name__ == "__main__":

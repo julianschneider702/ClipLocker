@@ -1,9 +1,9 @@
 import base64
-import html, io
+import io
+from datetime import datetime
 import os
 import shutil
 import sqlite3
-import time
 
 import cv2
 
@@ -11,7 +11,6 @@ from dash import html, dcc, Output, Input, State, no_update, ctx, ALL, MATCH
 from docx import Document
 import dash_daq as daq
 
-#from ClipLocker.logger import log
 from app import app
 import app as appModule
 from styles import *
@@ -137,8 +136,10 @@ def renderPage3(appSettings):
                                 html.Div(id="sentence-panel")
                             ],
                             style={
-                                "width": "0%",
-                                "display": "Block",
+                                "width": "30%",          # sonst sieht man nichts bei 0%
+                                "height": "100vh",        # feste Höhe notwendig
+                                "overflowY": "auto",      # vertikale Scrollbar
+                                "display": "none"
                             }
                         ),
 
@@ -502,7 +503,17 @@ def activateConfirmBtn(sentences, epoch):
 )
 def showEpochDropdownAndRerenderSite(sentences):
     if sentences:
-        return {"display": "block"}, {"display": "none"}, {"width": "30%"}, {"width": "70%", "padding": "10px",}
+        return (
+            {"display": "block"},
+            {"display": "none"},
+            {
+                "width": "30%",
+                "height": "100vh",
+                "overflowY": "auto",
+                "display": "block",
+            },
+            {"width": "70%", "padding": "10px"},
+        )
     return {"display": "none"}, no_update, no_update, no_update
 
 
@@ -653,7 +664,7 @@ def pickClips(n_clicks, sentences, epoch, appSettings):
         return no_update
 
     print("Picking Clips")
-    output=find_best_clip_ids_for_sentences(sentences, appSettings["path"] + appSettings["db"], 20, epoch)
+    output=find_best_clip_ids_for_sentences(sentences, appSettings["path"] + appSettings["db"], 32, epoch)
 
     return output
 
@@ -869,7 +880,7 @@ def renderSearchedClips(searchResults, currentPage, appSettings, selectedClips, 
     appModule.rawMediaFolder = appSettings["path"] + appSettings["fs"]
 
     currentPage = currentPage or 0
-    pageSize = 20
+    pageSize = 32
     totalResults = len(searchResults)
     totalPages = (totalResults - 1) // pageSize + 1
 
@@ -927,8 +938,8 @@ def renderSearchedClips(searchResults, currentPage, appSettings, selectedClips, 
                 id={"type": "video", "form": "searched","clip_id": clipId},
                 src=filePath,
                 controls=True,
-                preload="metadata",
-                #poster=create_video_thumbnail(filePath),
+                preload="none",
+                poster=f"/media/thumb/{clipId}.jpg",
                 style=clipStyle
             )
         elif extension in IMAGE_EXT:
@@ -1050,7 +1061,8 @@ def renderRecommendedClips(selectedSentence, clips, selectedClips, appSettings, 
                 id={"type": "video","form": "recommended", "clip_id": clip},
                 src=file_path,
                 controls=True,
-                preload="metadata",
+                preload="none",
+                poster=f"/media/thumb/{clip}.jpg",
                 style=newVideoStyle
             )
 
@@ -1293,7 +1305,8 @@ def displaySelectedClips(selectedClips, selectedSentence, placeholderStore, clip
             media = html.Video(
                 src=file_path,
                 controls=False,
-                preload="metadata",
+                preload="none",
+                poster=f"/media/thumb/{clip}.jpg",
                 style=miniClipStyle
             )
         elif extension in IMAGE_EXT:
@@ -1475,8 +1488,11 @@ def createFolder(n_clicks, sentences, selectedClips, filename, appSettings, plac
 
     placeholderSource = os.path.join(os.path.dirname(__file__), "assets", "placeholder.png")
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     folder = filename.replace(".docx", "")
-    folderpath = r"C:\Users\Admin\Documents\05-No_Mans_Sky\Database\\" + folder +"_Media"
+
+    folderpath = appSettings["path"] + folder + "_" + timestamp + "_Media"
 
     os.makedirs(folderpath, exist_ok=True)
 
@@ -1548,8 +1564,8 @@ def openTagEditor(timestamps):
     if not timestamp:
         return no_update
 
-    print("clip_id", triggered["clip_id"])
-    print("form", triggered["form"])
+    #print("clip_id", triggered["clip_id"])
+    #print("form", triggered["form"])
 
     return {
         "clip_id": triggered["clip_id"],
@@ -1579,7 +1595,7 @@ def toggleTagEditorOverlay(editData):
     prevent_initial_call=True,
 )
 def openEditModal(n_clicks, appSettings):
-    print("modal aufgerufen")
+    #print("modal aufgerufen")
 
     # Kein echter Klick
     if not n_clicks or not any(n for n in n_clicks if n):
@@ -1633,8 +1649,8 @@ def openEditModal(n_clicks, appSettings):
             ]
         ),
     ])
-    print("modal durch")
-    print("clipId: ", clipId)
+    #print("modal durch")
+    #print("clipId: ", clipId)
 
     return content, tagEditOverlayStyle, clipId
 
