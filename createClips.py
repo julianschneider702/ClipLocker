@@ -1108,7 +1108,13 @@ def mergeClips(n, selected_id, clips):
 
     mid       = new_id()
     mid_path  = os.path.join(clips_dir, f"{mid}.mp4")
-    run_ffmpeg("-f", "concat", "-safe", "0", "-i", list_path, "-c", "copy", mid_path)
+    run_ffmpeg(
+        "-f", "concat", "-safe", "0",
+        "-i", list_path,
+        "-c:v", "libx264", "-crf", "18",  # ← statt -c copy
+        "-c:a", "aac",
+        mid_path
+    )
     os.remove(list_path)
 
     entry = make_clip_entry(mid, mid_path,
@@ -1196,12 +1202,15 @@ def saveClips(n, clips, output_folder, settings):
             pre_seek  = max(0.0, ss - 2.0)
             fine_seek = round(ss - pre_seek, 3)
 
+            fps = 30
+            one_frame = round(1 / fps, 4)
+
             if ts > 0 or te > 0:
                 ok = run_ffmpeg(
                     "-ss", str(pre_seek),
                     "-i",  p4_source_video,
                     "-ss", str(fine_seek),
-                    "-t",  str(dur),
+                    "-t",  str(max(0.01, dur - one_frame)),
                     "-c:v", "libx264", "-crf", "18",
                     "-c:a", "aac",
                     "-avoid_negative_ts", "make_zero",
