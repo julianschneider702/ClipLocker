@@ -187,6 +187,9 @@ def serveLayout():
             html.Button(id="p4-save-btn", style={"display": "none"}),
             dcc.Input(id="p4-output-folder-input", style={"display": "none"}),
             html.Button(id="p4-trim-03-btn", style={"display": "none"}),
+            html.Button(id="keyboard-enter-btn", style={"display": "none"}, n_clicks=0),
+            html.Div(id="confirm-success-msg", style={"display": "none"}),
+            html.Div(id="create-folder-success-msg", style={"display": "none"}),
 
 
             html.Div(

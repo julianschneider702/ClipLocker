@@ -78,18 +78,26 @@ def renderPage3(appSettings):
 
                         # ── Bestätigen-Button (initial versteckt) ───────────────
                         html.Div(
-                            html.Button(
-                                "▶ Bestätigen",
-                                id="confirm-script-btn",
-                                n_clicks=0,
-                                style={
-                                    **titleBtnStyle,
-                                    "fontSize": "15px",
-                                    "cursor": "pointer",
-                                    "backgroundColor": "white",
-                                    "color": "black",
-                                },
-                            ),
+                            children=[
+                                html.Button(
+                                    "▶ Bestätigen",
+                                    id="confirm-script-btn",
+                                    n_clicks=0,
+                                    style={
+                                        **titleBtnStyle,
+                                        "fontSize": "15px",
+                                        "cursor": "pointer",
+                                        "backgroundColor": "white",
+                                        "color": "black",
+                                    },
+                                ),
+                                html.Div(
+                                    "✓ Clips werden gesucht…",
+                                    id="confirm-success-msg",
+                                    style={"display": "none", "fontSize": "13px",
+                                           "color": "green", "fontWeight": "bold"},
+                                ),
+                            ],
                             id="confirm-btn-wrapper",
                             style={"display": "none"},
                         ),
@@ -102,16 +110,21 @@ def renderPage3(appSettings):
 
                         # ── Ordner erstellen ────────────────────────────────────
                         html.Div(
-                            html.Button(
-                                "Ordner erstellen",
-                                id="create-folder",
-                                n_clicks=0,
-                                style={**titleBtnStyle, "font-size": "15px"}
-                            ),
-                            style={
-                                "display": "flex",
-                                "alignItems": "center",
-                            },
+                            children=[
+                                html.Button(
+                                    "Ordner erstellen",
+                                    id="create-folder",
+                                    n_clicks=0,
+                                    style={**titleBtnStyle, "font-size": "15px"},
+                                ),
+                                html.Div(
+                                    "✓ Ordner wurde erstellt",
+                                    id="create-folder-success-msg",
+                                    style={"display": "none", "fontSize": "13px",
+                                           "color": "green", "fontWeight": "bold"},
+                                ),
+                            ],
+                            style={"display": "flex", "alignItems": "center", "gap": "10px"},
                         ),
                     ],
                     style={
@@ -133,13 +146,14 @@ def renderPage3(appSettings):
                         html.Div(
                             id="left-panel",
                             children=[
-                                html.Div(id="sentence-panel")
+                                html.Div(id="sentence-panel"),
+                                html.Div(style={"height": "300px"}),
                             ],
                             style={
                                 "width": "30%",          # sonst sieht man nichts bei 0%
-                                "height": "100vh",        # feste Höhe notwendig
+                                "height": "95vh",        # feste Höhe notwendig
                                 "overflowY": "auto",      # vertikale Scrollbar
-                                "display": "none"
+                                "display": "none",
                             }
                         ),
 
@@ -364,7 +378,7 @@ def renderPage3(appSettings):
                                                                             id="search-clips-btn",
                                                                             n_clicks=0,
                                                                             style={
-                                                                                "height": "35px",
+                                                                                "height": "50px",
                                                                                 "padding": "0 18px",
                                                                                 "border": "1px solid #666",
                                                                                 "borderRadius": "8px",
@@ -435,6 +449,9 @@ def renderPage3(appSettings):
                                                                     ],
                                                                     style=paginationContainerStyle
                                                                 ),
+                                                                html.Div(
+                                                                    style = {"height": "100px"}
+                                                                )
                                                             ],
                                                             style={"display": "block"}
                                                         )
@@ -480,8 +497,8 @@ def renderPage3(appSettings):
     ])
 
 @app.callback(
-    Output("confirm-script-btn", "disabled"),
-    Output("confirm-script-btn", "style"),
+    Output("confirm-script-btn", "disabled", allow_duplicate=True),
+    Output("confirm-script-btn", "style", allow_duplicate=True),
     Input("sentence-store", "data"),
     Input("epoch-dropdown-p3", "value"),
     prevent_initial_call=True,
@@ -708,10 +725,6 @@ def updateRightTabContent(activeTab):
 )
 def switchRightTab(nSuggestions, nSearch):
     trigger = ctx.triggered_id
-
-    if nSearch == 0 or nSuggestions == 0:
-        return no_update
-
     if trigger == "tab-suggestions":
         print("suggestions")
         return "suggestions"
@@ -720,6 +733,97 @@ def switchRightTab(nSuggestions, nSearch):
         return "search"
 
     return no_update
+
+@app.callback(
+    Output("confirm-script-btn",    "style"),
+    Output("confirm-success-msg",   "style"),
+    Input("confirm-script-btn",     "n_clicks"),
+    prevent_initial_call=True,
+)
+def hideConfirmBtn(n):
+    if not n:
+        return no_update, no_update
+    return (
+        {"display": "none"},
+        {"display": "block", "fontSize": "13px",
+         "color": "green", "fontWeight": "bold"},
+    )
+
+
+@app.callback(
+    Output("create-folder",             "style",    allow_duplicate=True),
+    Output("create-folder-success-msg", "style"),
+    Input("create-folder",              "n_clicks"),
+    State("selectedClips-store",        "data"),
+    prevent_initial_call=True,
+)
+def hideCreateFolderBtn(n, selectedClips):
+    if not n or not selectedClips:
+        return no_update, no_update
+    return (
+        {"display": "none"},
+        {"display": "block", "fontSize": "13px",
+         "color": "green", "fontWeight": "bold"},
+    )
+
+app.clientside_callback(
+    """
+    function(n_intervals) {
+        document.addEventListener('keydown', function(e) {
+            if (document.activeElement.tagName === 'INPUT' ||
+                document.activeElement.tagName === 'TEXTAREA') return;
+            if (e.key === 'Enter') {
+                window._enterPressed = (window._enterPressed || 0) + 1;
+                // Dash Store triggern via hidden button
+                const btn = document.getElementById('keyboard-enter-btn');
+                if (btn) btn.click();
+            }
+        }, {once: false});
+        return null;
+    }
+    """,
+    Output("keyboard-enter-btn", "id"),
+    Input("keyboard-enter-btn", "id"),
+)
+
+@app.callback(
+    Output("selectedSentence-store", "data", allow_duplicate=True),
+    Input("keyboard-enter-btn", "n_clicks"),
+    State("selectedSentence-store", "data"),
+    State("sentence-store", "data"),
+    prevent_initial_call=True,
+)
+def nextSentenceOnEnter(n, current, sentences):
+    if not n or not sentences:
+        return no_update
+    current = current or 0
+    return min(current + 1, len(sentences) - 1)
+
+
+app.clientside_callback(
+    """
+    function(id) {
+        document.addEventListener('keydown', function(e) {
+            if (document.activeElement.tagName === 'INPUT' ||
+                document.activeElement.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'ArrowLeft') {
+                const btn = document.getElementById('tab-suggestions');
+                if (btn) btn.click();
+            }
+            if (e.key === 'ArrowRight') {
+                const btn = document.getElementById('tab-search');
+                if (btn) btn.click();
+            }
+        });
+        return id;
+    }
+    """,
+    Output("sentence-panel", "id"),
+    Input("sentence-panel", "id"),
+    prevent_initial_call=False,
+)
+
 
 def getAllTagsFromDB(appSettings):
     dbPath = appSettings["path"] + appSettings["db"]
