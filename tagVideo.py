@@ -591,7 +591,7 @@ def saveClipSettings(haiku, sonnet, hide, store):
 
 @app.callback(
     Output("analyse-area", "children", allow_duplicate=True),
-    Output("analyse-btn", "style"),
+    #Output("analyse-btn", "style"),
     Input("analyse-btn", "n_clicks"),
     State("clips-store", "data"),
     State("clip-settings-store", "data"),
@@ -635,7 +635,7 @@ def AnalyseBtnPressed(btn, clips, settings, appSettings):
 
     threading.Thread(target=createClaudePrompts, args=(clips, settings, appSettings)).start()
 
-    return progressbar, {**analyseBtnStyle, "display": "none"}
+    return progressbar
 
 
 @app.callback(
@@ -938,18 +938,20 @@ def promptToClaude(model, client, tagList, clipName, retries=3, mediaType=None, 
 
     for attempt in range(retries):
         try:
+
             message = client.messages.create(
                 model=model,
                 max_tokens=250,
+                # 1. Den basePrompt hier als System-Prompt definieren und cachen
+                system=[{
+                    "type": "text",
+                    "text": basePrompt,
+                    "cache_control": {"type": "ephemeral"}  # Aktiviert das Caching
+                }],
+                # 2. In den Messages verbleiben nur noch die Bilddaten
                 messages=[{
                     "role": "user",
-                    "content": [
-                        *imageContent,
-                        {
-                            "type": "text",
-                            "text": basePrompt
-                        }
-                    ]
+                    "content": imageContent  # Kein Unpacking (*) mehr nötig, da imageContent bereits eine Liste ist
                 }]
             )
             parsed = parseClaudeResponse(message.content[0].text, clipName)

@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 from datetime import datetime
 import os
 import shutil
@@ -30,32 +31,28 @@ def renderPage3(appSettings):
                 html.Div(
                     [
                         # ── Upload ──────────────────────────────────────────────
+                        # Statt dem einen upload-wrapper, jetzt zwei nebeneinander:
                         html.Div(
-                            dcc.Upload(
-                                id="upload-word",
-                                multiple=False,
-                                children=html.Div("docx hereinziehen"),
-                                style={
-                                    "width": "100%",
-                                    "height": "100%",
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "justifyContent": "center",
-                                    "textAlign": "center",
-                                },
-                            ),
-                            id = "upload-wrapper",
-                            style={
-                                "height": "50px",
-                                "display": "flex",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                                "cursor": "pointer",
-                                "border": "2px dashed #777",
-                                "borderRadius": "10px",
-                                "padding": "0 16px",
-                                "backgroundColor": "#f8f8f8",
-                            },
+                            [
+                                html.Div(
+                                    dcc.Upload(
+                                        id="upload-word",
+                                        multiple=False,
+                                        children=html.Div("📄 Skript"),
+                                        style={"width": "100%", "height": "100%", "display": "flex",
+                                               "alignItems": "center", "justifyContent": "center"},
+                                    ),
+                                    id="upload-wrapper",
+                                    style={
+                                        "height": "50px", "display": "flex", "alignItems": "center",
+                                        "justifyContent": "center", "cursor": "pointer",
+                                        "border": "2px dashed #777", "borderRadius": "10px",
+                                        "padding": "0 16px", "backgroundColor": "#f8f8f8",
+                                        "flex": "1",
+                                    },
+                                ),
+                            ],
+                            style={"display": "flex", "gap": "10px", "flex": "1"},
                         ),
 
                         # ── Epoche-Dropdown (initial versteckt) ─────────────────
@@ -523,15 +520,10 @@ def showEpochDropdownAndRerenderSite(sentences):
         return (
             {"display": "block"},
             {"display": "none"},
-            {
-                "width": "30%",
-                "height": "100vh",
-                "overflowY": "auto",
-                "display": "block",
-            },
+            {"width": "30%", "height": "100vh", "overflowY": "auto", "display": "block"},
             {"width": "70%", "padding": "10px"},
         )
-    return {"display": "none"}, no_update, no_update, no_update
+    return {"display": "none"}, no_update, no_update, no_update, no_update
 
 
 @app.callback(
@@ -548,55 +540,68 @@ def showConfirmBtn(epoch):
 
 @app.callback(
     Output("sentence-store", "data"),
+    Output("descriptions-store", "data"),
     Output("documentName-store", "data"),
     Input("upload-word", "contents"),
     Input("upload-word", "filename"),
 )
 def safeSentences(contents, filename):
-
     if contents is None or filename is None:
-        return no_update
+        return no_update, no_update, no_update
 
-    if not filename.endswith(".docx"):
-        return no_update
+    if not filename.lower().endswith(".json"):
+        return no_update, no_update, no_update
 
-    content_type, content_string = contents.split(",",1)    #aufteilung in header und data(1 stellt sicher nur 1 Teilung)
-    decoded = base64.b64decode(content_string)              #decodierung der daten
-    file=io.BytesIO(decoded)                                #umwandlung zu datei
-    document = Document(file)                               #umwandlunng in dateistruktur
-    sentences = [p.text for p in document.paragraphs if p.text.strip()]       #liste aller absätze(Sätze)
+    content_type, content_string = contents.split(",", 1)
+    decoded = base64.b64decode(content_string)
+    table_data = json.loads(decoded.decode("utf-8"))
 
-    output = []
+    sentences    = [entry["sentence"]    for entry in table_data if entry.get("sentence", "").strip()]
+    descriptions = [entry["description"] for entry in table_data if entry.get("sentence", "").strip()]
 
-    for sentence in sentences:
-        output.append(sentence)
-
-    print(filename)
-    return output, filename
+    print(f"Geladen: {len(sentences)} Sätze, {len(descriptions)} Beschreibungen")
+    return sentences, descriptions, filename
 
 @app.callback(
     Output("sentence-panel", "children"),
     Input("sentence-store", "data"),
+    Input("descriptions-store", "data"),
     State("app-settings-store", "data"),
     prevent_initial_call=True,
 )
-def renderSentences(sentences, appSettings):
+def renderSentences(sentences, descriptions, appSettings):
     if not sentences:
         return []
 
     containers = []
 
     for i, sentence in enumerate(sentences):
+        description = descriptions[i] if descriptions and i < len(descriptions) else None
+
+        # Haupttext: Beschreibung falls vorhanden, sonst Satz
+        primary_text = sentence
+        subtitle = html.Div(
+            description,
+            style={
+                "fontSize": "11px",
+                "color": "#b0b0b0",
+                "marginTop": "4px",
+                "fontStyle": "italic",
+                "lineHeight": "1.3",
+            }
+        ) if description else None
+
         containers.append(
             html.Div(
-                [
-                    html.Button(
-                        sentence,
-                        id={"type": "sentence_button", "sentence_index": i},
-                        n_clicks=0,
-                        style=baseSentenceStyle
-                    )
-                ]
+                html.Button(
+                    html.Div([
+                        html.Div(primary_text),
+                        subtitle,
+                    ]) if subtitle else primary_text,
+                    id={"type": "sentence_button", "sentence_index": i},
+                    n_clicks=0,
+                    style=baseSentenceStyle
+                )
             )
         )
 
@@ -672,17 +677,27 @@ def updateAndDisplaySentenceStates(selectedSentence, sentences, selectedClips, p
     Output("clips-per-sentence-store", "data"),
     Input("confirm-script-btn", "n_clicks"),
     State("sentence-store", "data"),
+    State("descriptions-store", "data"),        # ← NEU
     State("epoch-dropdown-p3", "value"),
     State("app-settings-store", "data"),
     prevent_initial_call=True
 )
-def pickClips(n_clicks, sentences, epoch, appSettings):
+def pickClips(n_clicks, sentences, descriptions, epoch, appSettings):
     if not sentences or not epoch or not n_clicks:
         return no_update
 
-    print("Picking Clips")
-    output=find_best_clip_ids_for_sentences(sentences, appSettings["path"] + appSettings["db"], 32, epoch)
+    use_descriptions = bool(descriptions) and len(descriptions) == len(sentences)
+    search_texts = descriptions if use_descriptions else sentences
 
+    print("Picking Clips mit", "Beschreibungen" if use_descriptions else "Sätzen")
+    print(f"  Sätze: {len(sentences)}, Beschreibungen: {len(descriptions) if descriptions else 0}")
+
+    output = find_best_clip_ids_for_sentences(
+        search_texts,
+        appSettings["path"] + appSettings["db"],
+        32,
+        epoch
+    )
     return output
 
 @app.callback(
@@ -751,19 +766,22 @@ def hideConfirmBtn(n):
 
 
 @app.callback(
-    Output("create-folder",             "style",    allow_duplicate=True),
-    Output("create-folder-success-msg", "style"),
+    Output("create-folder",             "disabled",  allow_duplicate=True),
+    Output("create-folder",             "style",     allow_duplicate=True),
+    Output("create-folder-success-msg", "children",  allow_duplicate=True),
+    Output("create-folder-success-msg", "style",     allow_duplicate=True),
     Input("create-folder",              "n_clicks"),
     State("selectedClips-store",        "data"),
     prevent_initial_call=True,
 )
-def hideCreateFolderBtn(n, selectedClips):
+def disableCreateFolderBtn(n, selectedClips):
     if not n or not selectedClips:
-        return no_update, no_update
+        return no_update, no_update, no_update, no_update
     return (
-        {"display": "none"},
-        {"display": "block", "fontSize": "13px",
-         "color": "green", "fontWeight": "bold"},
+        True,
+        {**titleBtnStyle, "font-size": "15px", "opacity": "0.5", "cursor": "not-allowed"},
+        "⏳ Ordner wird erstellt…",
+        {"display": "block", "fontSize": "13px", "color": "orange", "fontWeight": "bold"},
     )
 
 app.clientside_callback(
@@ -1090,6 +1108,12 @@ def renderSearchedClips(searchResults, currentPage, appSettings, selectedClips, 
                                 n_clicks=0,
                                 style={**selectClipBtnStyle, "left": "3px"}
                             ),
+                            html.Button(
+                                "⬇",
+                                id={"type": "download_clip_button", "clip_id": clipId},
+                                n_clicks=0,
+                                style={**selectClipBtnStyle, "top": "auto", "bottom": "3px", "left": "3px"}
+                            ),
                         ],
                         style=clipFrameStyle
                     ),
@@ -1194,6 +1218,12 @@ def renderRecommendedClips(selectedSentence, clips, selectedClips, appSettings, 
                             html.Button("✎",
                                         id={"type": "edit_tags_button", "form": "recommended", "clip_id": clip},
                                         style={**selectClipBtnStyle, "left": "3px"}),
+                            html.Button(  # ← NEU
+                                "⬇",
+                                id={"type": "download_clip_button", "clip_id": clip},
+                                n_clicks=0,
+                                style={**selectClipBtnStyle, "top": "auto", "bottom": "3px", "left": "3px"}
+                            ),
                         ],
                         style=clipFrameStyle
                     ),
@@ -1569,19 +1599,22 @@ def togglePlaceholder(n_clicks, placeholderStore, selectedSentence, sentences, s
 
 
 @app.callback(
-    Output("selectedSentence-store", "data", allow_duplicate=True),#DUMMY
-    Input("create-folder", "n_clicks"),
-    State("sentence-store", "data"),
-    State("selectedClips-store", "data"),
-    State("documentName-store", "data"),
-    State("app-settings-store", "data"),
-    State("placeholder-active-store", "data"),
-    prevent_initial_call=True
+    Output("create-folder",             "disabled",  ),
+    Output("create-folder",             "style",     ),
+    Output("create-folder-success-msg", "children",  ),
+    Output("create-folder-success-msg", "style",     ),
+    Input("create-folder",   "n_clicks"),
+    State("sentence-store",            "data"),
+    State("selectedClips-store",       "data"),
+    State("documentName-store",        "data"),
+    State("app-settings-store",        "data"),
+    State("placeholder-active-store",  "data"),
+    prevent_initial_call=True,
 )
 def createFolder(n_clicks, sentences, selectedClips, filename, appSettings, placeholderStore):
 
     if not selectedClips:
-        return no_update
+        return no_update, no_update, no_update, no_update
 
     if not isinstance(placeholderStore, list) or len(placeholderStore) != len(sentences):
         placeholderStore = [False] * len(sentences)
@@ -1589,46 +1622,29 @@ def createFolder(n_clicks, sentences, selectedClips, filename, appSettings, plac
     if not isinstance(selectedClips, list):
         selectedClips = [[] for _ in range(len(sentences))]
 
-
     placeholderSource = os.path.join(os.path.dirname(__file__), "assets", "placeholder.png")
-
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
     folder = filename.replace(".docx", "")
-
     folderpath = appSettings["path"] + folder + "_" + timestamp + "_Media"
-
     os.makedirs(folderpath, exist_ok=True)
 
     for i, sentence in enumerate(sentences):
         clipsPerSentence = selectedClips[i] if i < len(selectedClips) else []
         placeholderActive = placeholderStore[i]
-
-        sentence = sentences[i]
         beginning = safe_filename_part(" ".join(sentence.split()[:3]))
         number = str(i + 1).zfill(3)
 
         if placeholderActive:
             if os.path.exists(placeholderSource):
-                destination = os.path.join(
-                    folderpath,
-                    f"{number}...{beginning}.png"
-                )
-                shutil.copy(placeholderSource, destination)
-            else:
-                print(f"Placeholder nicht gefunden: {placeholderSource}")
+                shutil.copy(placeholderSource, os.path.join(folderpath, f"{number}...{beginning}.png"))
             continue
-
-
 
         if not clipsPerSentence:
             continue
 
         for clip in clipsPerSentence:
-
             source = None
             extension = None
-
             for ext in EXTENSIONS:
                 test_path = os.path.join(appSettings["path"] + appSettings["fs"], f"{clip}{ext}")
                 if os.path.exists(test_path):
@@ -1640,13 +1656,15 @@ def createFolder(n_clicks, sentences, selectedClips, filename, appSettings, plac
                 print(f"Keine Datei gefunden für Clip {clip}")
                 continue
 
-            number = str(i + 1).zfill(3)
             destination = os.path.join(folderpath, f"{number}_({clip})...{beginning}{extension}")
-
             shutil.copy(source, destination)
 
-    return no_update
-
+    return (
+        False,
+        {**titleBtnStyle, "font-size": "15px"},
+        "✓ Ordner wurde erstellt",
+        {"display": "block", "fontSize": "13px", "color": "green", "fontWeight": "bold"},
+    )
 def safe_filename_part(text):
     forbidden = '<>:"/\\|?*'
     for ch in forbidden:
@@ -1771,3 +1789,25 @@ def closeEditModal(db, close):
         return no_update, no_update
 
     return {"display": "none"}, pageContentNormalStyle
+
+@app.callback(
+    Output("clip-download", "data"),
+    Input({"type": "download_clip_button", "clip_id": ALL}, "n_clicks"),
+    State("app-settings-store", "data"),
+    prevent_initial_call=True,
+)
+def downloadClip(clicks, appSettings):
+    triggered = ctx.triggered_id
+    if not triggered:
+        return no_update
+
+    if ctx.triggered[0]["value"] in (None, 0):
+        return no_update
+
+    clipId = triggered["clip_id"]
+    for ext in EXTENSIONS:
+        path = os.path.join(appSettings["path"] + appSettings["fs"], f"{clipId}{ext}")
+        if os.path.exists(path):
+            return dcc.send_file(path)
+
+    return no_update

@@ -615,6 +615,7 @@ def navigateClips(prev, next_, selected_id, clips):
 
     return clips[new_idx]["id"]
 
+
 @app.callback(
     Output("p4-clips-store",           "data", allow_duplicate=True),
     Output("p4-selected-store",        "data", allow_duplicate=True),
@@ -631,23 +632,12 @@ def resetPage4Stores(page):
 
     global p4_pending, p4_clips_dir, p4_progress, p4_source_video
 
-    # Temp-Ordner aufräumen
-    if p4_source_video and os.path.exists(p4_source_video):
-        try:
-            session_dir = os.path.dirname(p4_source_video)
-            shutil.rmtree(session_dir, ignore_errors=True)
-            print(f"[Page4] Temp-Ordner gelöscht: {session_dir}")
-        except Exception as e:
-            print(f"[Page4] Aufräumen fehlgeschlagen: {e}")
-
     p4_pending      = []
     p4_clips_dir    = None
     p4_source_video = None
     p4_progress     = {"current": 0, "total": 0, "status": "", "done": False, "error": None}
 
     return [], None, None, None, None, {"overflowY": "auto", "flex": "1", "display": "none"}
-
-
 # ── Callbacks ─────────────────────────────────────────────────────────────────
 
 @app.callback(
