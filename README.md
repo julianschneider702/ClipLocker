@@ -11,13 +11,13 @@ Dieses Projekt löst ein zentrales Problem bei der Produktion historischer Dokum
 
 ## Features
 
-- 🎬 **Multi-Format Support** – Verarbeitet sowohl Einzelbilder als auch Videoclips (per Frame-Extraktion an definierten Zeitstempeln)
-- 🤖 **KI-gestützte Bildbeschreibung** – Nutzt Claude Haiku 4.5 oder Sonnet 4.6 je nach Qualitäts-/Kostenanforderung
-- 🏷️ **Strukturiertes Tagging-System** – Kategorisierte Tags (Personen, Emotionen, Aktivitäten, Orte, Objekte, Zeit, Wetter) für präzise Filterung
-- 🖥️ **Web-Interface (Dash)** – Manuelle Review und Korrektur der KI-generierten Tags vor der finalen Speicherung in der Datenbank
-- 🔍 **Semantische Suche** – Findet passende Clips zu Skriptsätzen auch bei völlig unterschiedlicher Formulierung
-- 🌗 **Robustheit gegen Bildqualität** – Erkennt automatisch dunkle, unscharfe oder schwer interpretierbare Aufnahmen und vermeidet Halluzinationen
-- 📐 **Panorama-Handling** – Spezielle Logik für breite Panoramabilder mit mehreren visuellen Zonen
+- **Multi-Format Support** – Verarbeitet sowohl Einzelbilder als auch Videoclips (per Frame-Extraktion an definierten Zeitstempeln)
+- **KI-gestützte Bildbeschreibung** – Nutzt Claude Haiku 4.5 oder Sonnet 4.6 je nach Qualitäts-/Kostenanforderung
+- **Strukturiertes Tagging-System** – Kategorisierte Tags (Personen, Emotionen, Aktivitäten, Orte, Objekte, Zeit, Wetter) für präzise Filterung
+- **Web-Interface (Dash)** – Manuelle Review und Korrektur der KI-generierten Tags vor der finalen Speicherung in der Datenbank
+- **Semantische Suche** – Findet passende Clips zu Skriptsätzen auch bei völlig unterschiedlicher Formulierung
+- **Robustheit gegen Bildqualität** – Erkennt automatisch dunkle, unscharfe oder schwer interpretierbare Aufnahmen und vermeidet Halluzinationen
+- **Panorama-Handling** – Spezielle Logik für breite Panoramabilder mit mehreren visuellen Zonen
 
 ## Architektur
 
